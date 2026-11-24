@@ -1,5 +1,6 @@
 export const input = {
   keys: new Set<string>(),
+  taps: new Set<string>(),
   lookX: 0,
   lookY: 0,
   shootHeld: false,
@@ -35,8 +36,10 @@ const BLOCK = new Set([
 ]);
 
 let lookId: number | null = null;
+let dragId: number | null = null;
 let lastX = 0;
 let lastY = 0;
+let dragDist = 0;
 
 function coarse() {
   return window.matchMedia("(pointer: coarse)").matches;
@@ -82,6 +85,7 @@ export function pollPad() {
 
 export function bindInput() {
   const down = (e: KeyboardEvent) => {
+    if (!e.repeat) input.taps.add(e.code);
     input.keys.add(e.code);
     if (BLOCK.has(e.code)) e.preventDefault();
   };
@@ -92,6 +96,7 @@ export function bindInput() {
     input.keys.clear();
     input.shootHeld = false;
     input.interactHeld = false;
+    dragId = null;
   };
   const move = (e: MouseEvent) => {
     if (document.pointerLockElement) {
@@ -100,20 +105,33 @@ export function bindInput() {
     }
   };
   const mouseDown = (e: MouseEvent) => {
-    if (e.button === 0 && document.pointerLockElement) input.shootHeld = true;
-    if (e.button === 2 && document.pointerLockElement) input.dropPulse = true;
+    const t = e.target as HTMLElement | null;
+    if (t?.closest("[data-ui]")) return;
+    if (document.pointerLockElement) {
+      if (e.button === 0) input.shootHeld = true;
+      if (e.button === 2) input.dropPulse = true;
+    } else if (!coarse() && (e.button === 0 || e.button === 2)) {
+      dragId = e.button;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      dragDist = 0;
+      if (e.button === 0) input.shootHeld = true;
+    }
   };
   const mouseUp = (e: MouseEvent) => {
     if (e.button === 0) input.shootHeld = false;
+    if (!document.pointerLockElement && dragId !== null) {
+      if (e.button === 2 && dragDist < 6) input.dropPulse = true;
+      dragId = null;
+    }
   };
   const ctxMenu = (e: MouseEvent) => {
-    if (document.pointerLockElement) e.preventDefault();
+    const t = e.target as HTMLElement | null;
+    if (document.pointerLockElement || !t?.closest("[data-ui]")) e.preventDefault();
   };
   const wheel = (e: WheelEvent) => {
-    if (document.pointerLockElement) {
-      input.wheel += Math.sign(e.deltaY);
-      e.preventDefault();
-    }
+    input.wheel += Math.sign(e.deltaY);
+    if (document.pointerLockElement) e.preventDefault();
   };
   const vis = () => {
     if (document.hidden) blur();
@@ -128,11 +146,22 @@ export function bindInput() {
     lastY = e.clientY;
   };
   const pmove = (e: PointerEvent) => {
-    if (e.pointerId !== lookId) return;
-    input.lookX += (e.clientX - lastX) * 1.35;
-    input.lookY += (e.clientY - lastY) * 1.35;
-    lastX = e.clientX;
-    lastY = e.clientY;
+    if (e.pointerId === lookId) {
+      input.lookX += (e.clientX - lastX) * 1.45;
+      input.lookY += (e.clientY - lastY) * 1.45;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      return;
+    }
+    if (!document.pointerLockElement && !coarse() && dragId !== null) {
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      dragDist += Math.hypot(dx, dy);
+      input.lookX += dx * 1.35;
+      input.lookY += dy * 1.35;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    }
   };
   const pup = (e: PointerEvent) => {
     if (e.pointerId === lookId) lookId = null;

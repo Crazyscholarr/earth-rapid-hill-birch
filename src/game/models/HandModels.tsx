@@ -3,7 +3,7 @@ import { useMemo, useRef } from "react";
 import { type Group, type Mesh, type MeshStandardMaterial } from "three";
 import { GRADES } from "@/game/content";
 import { carPoint, sim } from "@/game/sim";
-import { createBillTexture, drawBubble, drawPoster, paint } from "@/game/textures";
+import { createBillTexture, createBunTexture, createSpongeTexture, drawBubble, drawPoster, paint } from "@/game/textures";
 
 export function Bubble() {
   const ref = useRef<Mesh>(null);
@@ -42,26 +42,33 @@ export function Bills() {
     const g = ref.current;
     if (!g) return;
     for (let i = 0; i < g.children.length; i++) {
-      const m = g.children[i] as Mesh;
+      const m = g.children[i] as Group;
       const b = sim.bills[i];
       if (!b) {
         m.visible = false;
         continue;
       }
       m.visible = true;
-      m.position.set(b.x, b.y + Math.sin(sim.clock * 4 + b.id) * 0.028, b.z);
-      m.rotation.y = sim.clock * 1.6 + b.id;
-      const s = 0.8 + Math.min(0.8, b.amount / 180);
+      m.position.set(b.x, b.y + Math.sin(sim.clock * 4 + b.id) * 0.025, b.z);
+      m.rotation.y = sim.clock * 1.5 + b.id;
+      const s = 0.9 + Math.min(0.7, b.amount / 180);
       m.scale.setScalar(s);
     }
   });
   return (
     <group ref={ref}>
       {Array.from({ length: 6 }, (_, i) => (
-        <mesh key={i} visible={false} castShadow>
-          <cylinderGeometry args={[0.16, 0.16, 0.04, 16]} />
-          <meshStandardMaterial map={billTex} color="#bbf7d0" emissive="#16a34a" emissiveIntensity={0.25} roughness={0.5} />
-        </mesh>
+        <group key={i} visible={false}>
+          <mesh castShadow>
+            <boxGeometry args={[0.26, 0.04, 0.13]} />
+            <meshStandardMaterial map={billTex} color="#dcfce7" emissive="#16a34a" emissiveIntensity={0.2} roughness={0.55} />
+          </mesh>
+          {/* Currency Wrapper Band */}
+          <mesh>
+            <boxGeometry args={[0.055, 0.044, 0.136]} />
+            <meshStandardMaterial color="#f59e0b" roughness={0.5} />
+          </mesh>
+        </group>
       ))}
     </group>
   );
@@ -119,20 +126,17 @@ function GripGlove({ side }: { side: "left" | "right" }) {
   const s = side === "left" ? -1 : 1;
   return (
     <group position={[s * 0.03, -0.055, 0.06]} rotation={[0.25, -s * 0.15, 0]}>
-      {/* Sleeve cuff */}
       <mesh position={[0, -0.04, 0.14]} rotation={[Math.PI / 2 - 0.15, 0, 0]}>
         <cylinderGeometry args={[0.038, 0.045, 0.18, 12]} />
-        <meshStandardMaterial color="#2b5c61" roughness={0.82} />
+        <meshStandardMaterial color="#264e52" roughness={0.82} />
       </mesh>
-      {/* Wrist */}
       <mesh position={[0, -0.01, 0.05]} rotation={[Math.PI / 2, 0, 0]}>
         <capsuleGeometry args={[0.032, 0.06, 6, 10]} />
-        <meshStandardMaterial color="#f5bfa0" roughness={0.72} />
+        <meshStandardMaterial color="#e8b393" roughness={0.72} />
       </mesh>
-      {/* Glove / Palm */}
       <mesh position={[0, 0.015, -0.01]} scale={[0.95, 0.65, 1.1]}>
         <sphereGeometry args={[0.044, 10, 10]} />
-        <meshStandardMaterial color="#374151" roughness={0.75} />
+        <meshStandardMaterial color="#27272a" roughness={0.78} />
       </mesh>
     </group>
   );
@@ -141,6 +145,8 @@ function GripGlove({ side }: { side: "left" | "right" }) {
 export function Hands() {
   const ref = useRef<Group>(null);
   const billTex = useMemo(() => createBillTexture(), []);
+  const spongeTex = useMemo(() => createSpongeTexture(), []);
+  const bunTex = useMemo(() => createBunTexture(), []);
   const poster = useMemo(() => paint((ctx, w, h) => drawPoster(ctx, w, h), 512, 680), []);
 
   useFrame((state) => {
@@ -193,7 +199,7 @@ export function Hands() {
       const gc = GRADES.find((x) => x.id === sim.grade)?.color ?? "#22c55e";
       if (!Array.isArray(mat)) (mat as MeshStandardMaterial).color.set(gc);
     }
-    g.position.y += Math.sin(sim.clock * 2.2) * 0.006;
+    g.position.y += Math.sin(sim.clock * 2.2) * 0.005;
 
     const key = String(sim.warrant);
     if (poster.key !== key) {
@@ -205,7 +211,7 @@ export function Hands() {
 
   return (
     <group ref={ref}>
-      {/* Left Hand + Held Wanted Poster (only visible when poster is up) */}
+      {/* Left Hand + Wanted Poster */}
       <group name="poster" position={[-0.2, -0.04, -0.58]} rotation={[0.04, 0.16, 0]} visible={false}>
         <mesh>
           <planeGeometry args={[0.34, 0.46]} />
@@ -214,43 +220,52 @@ export function Hands() {
         <GripGlove side="left" />
       </group>
 
-      {/* Right Hand + Held Tool (only visible when holding an item) */}
+      {/* Right Hand + Detailed Tool */}
       <group name="tool" position={[0.28, -0.17, -0.58]} visible={false}>
         <GripGlove side="right" />
 
-        {/* Fuel Nozzle */}
+        {/* Realistic Fuel Nozzle */}
         <group name="h-nozzle">
-          <mesh rotation={[0.4, 0, 0.3]} position={[0, -0.02, 0.04]}>
-            <capsuleGeometry args={[0.025, 0.12, 6, 10]} />
-            <meshStandardMaterial color="#1e293b" roughness={0.4} metalness={0.5} />
+          <mesh rotation={[0.4, 0, 0.25]} position={[0, -0.02, 0.04]}>
+            <capsuleGeometry args={[0.024, 0.12, 6, 10]} />
+            <meshStandardMaterial color="#18181b" roughness={0.5} metalness={0.4} />
           </mesh>
-          <mesh name="h-nozzle-tip" position={[0.02, 0.04, -0.04]} rotation={[Math.PI / 2 - 0.2, 0, 0]}>
-            <cylinderGeometry args={[0.036, 0.042, 0.16, 12]} />
+          <mesh name="h-nozzle-tip" position={[0.02, 0.045, -0.04]} rotation={[Math.PI / 2 - 0.2, 0, 0]}>
+            <cylinderGeometry args={[0.035, 0.04, 0.15, 14]} />
             <meshStandardMaterial color="#22c55e" roughness={0.35} />
           </mesh>
-          <mesh position={[0.02, 0.04, -0.17]} rotation={[Math.PI / 2 + 0.25, 0, 0]}>
-            <cylinderGeometry args={[0.015, 0.018, 0.14, 10]} />
-            <meshStandardMaterial color="#cbd5e1" roughness={0.25} metalness={0.8} />
+          {/* Steel Spout + Drip Collar */}
+          <mesh position={[0.02, 0.045, -0.17]} rotation={[Math.PI / 2 + 0.28, 0, 0]}>
+            <cylinderGeometry args={[0.013, 0.016, 0.16, 12]} />
+            <meshStandardMaterial color="#e2e8f0" roughness={0.2} metalness={0.88} />
+          </mesh>
+          <mesh position={[0.02, 0.03, -0.14]} rotation={[0.28, 0, 0]}>
+            <torusGeometry args={[0.022, 0.005, 6, 12]} />
+            <meshStandardMaterial color="#18181b" roughness={0.7} />
           </mesh>
         </group>
 
-        {/* Contoured Sponge */}
+        {/* Porous Wash Sponge */}
         <group name="h-sponge" visible={false} rotation={[0.2, 0.3, 0]}>
           <mesh rotation={[0, 0, Math.PI / 2]}>
-            <capsuleGeometry args={[0.042, 0.11, 6, 10]} />
-            <meshStandardMaterial color="#eab308" roughness={0.9} />
+            <capsuleGeometry args={[0.042, 0.11, 6, 12]} />
+            <meshStandardMaterial map={spongeTex} roughness={0.92} />
           </mesh>
           <mesh position={[0, 0.032, 0]} rotation={[0, 0, Math.PI / 2]}>
-            <capsuleGeometry args={[0.038, 0.11, 6, 10]} />
+            <capsuleGeometry args={[0.038, 0.11, 6, 12]} />
             <meshStandardMaterial color="#15803d" roughness={0.95} />
           </mesh>
         </group>
 
-        {/* Juicy Burger */}
+        {/* Detailed Sesame Burger on Tray */}
         <group name="h-burger" visible={false}>
+          <mesh position={[0, -0.045, 0]}>
+            <cylinderGeometry args={[0.1, 0.085, 0.015, 16]} />
+            <meshStandardMaterial color="#dc2626" roughness={0.5} />
+          </mesh>
           <mesh position={[0, 0.032, 0]}>
             <sphereGeometry args={[0.085, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
-            <meshStandardMaterial color="#d97706" roughness={0.68} />
+            <meshStandardMaterial map={bunTex} roughness={0.7} />
           </mesh>
           <mesh position={[0, 0.012, 0]}>
             <cylinderGeometry args={[0.09, 0.09, 0.015, 14]} />
@@ -260,16 +275,20 @@ export function Hands() {
             <cylinderGeometry args={[0.085, 0.085, 0.025, 14]} />
             <meshStandardMaterial color="#78350f" roughness={0.85} />
           </mesh>
-          <mesh position={[0, -0.03, 0]}>
+          <mesh position={[0, -0.028, 0]}>
             <cylinderGeometry args={[0.08, 0.075, 0.025, 14]} />
             <meshStandardMaterial color="#d97706" roughness={0.7} />
           </mesh>
         </group>
 
-        {/* Ribbed Gas Cap */}
+        {/* Threaded Red Gas Cap */}
         <group name="h-cap" visible={false} rotation={[0.35, 0, 0]}>
+          <mesh position={[0, -0.025, 0]}>
+            <cylinderGeometry args={[0.058, 0.058, 0.035, 14]} />
+            <meshStandardMaterial color="#18181b" roughness={0.7} />
+          </mesh>
           <mesh>
-            <cylinderGeometry args={[0.075, 0.08, 0.045, 16]} />
+            <cylinderGeometry args={[0.078, 0.082, 0.042, 16]} />
             <meshStandardMaterial color="#dc2626" roughness={0.35} />
           </mesh>
           <mesh position={[0, 0.028, 0]} rotation={[0, 0, Math.PI / 2]}>
@@ -278,52 +297,62 @@ export function Hands() {
           </mesh>
         </group>
 
-        {/* Ergonomic Taser */}
+        {/* Tactical Stun Gun / Taser */}
         <group name="h-taser" visible={false}>
           <mesh rotation={[0.3, 0, 0]} position={[0, -0.03, 0.03]}>
-            <capsuleGeometry args={[0.025, 0.1, 6, 10]} />
-            <meshStandardMaterial color="#334155" roughness={0.45} />
+            <capsuleGeometry args={[0.024, 0.1, 6, 10]} />
+            <meshStandardMaterial color="#18181b" roughness={0.65} />
           </mesh>
           <mesh position={[0, 0.025, -0.04]} rotation={[Math.PI / 2, 0, 0]}>
-            <capsuleGeometry args={[0.035, 0.14, 6, 10]} />
-            <meshStandardMaterial color="#1e293b" roughness={0.4} metalness={0.4} />
+            <capsuleGeometry args={[0.034, 0.14, 6, 10]} />
+            <meshStandardMaterial color="#eab308" roughness={0.4} />
           </mesh>
-          <mesh position={[-0.02, 0.025, -0.14]} rotation={[Math.PI / 2, 0, 0]}>
+          <mesh position={[-0.018, 0.025, -0.14]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.008, 0.008, 0.05, 8]} />
             <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={0.9} />
           </mesh>
-          <mesh position={[0.02, 0.025, -0.14]} rotation={[Math.PI / 2, 0, 0]}>
+          <mesh position={[0.018, 0.025, -0.14]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.008, 0.008, 0.05, 8]} />
             <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={0.9} />
           </mesh>
         </group>
 
-        {/* Cash Stack */}
-        <mesh name="h-cash" visible={false} rotation={[0.2, 0.3, 0]}>
-          <cylinderGeometry args={[0.09, 0.09, 0.04, 14]} />
-          <meshStandardMaterial map={billTex} color="#bbf7d0" roughness={0.6} />
-        </mesh>
-
-        {/* Side Mirror */}
-        <group name="h-mirror" visible={false}>
-          <mesh rotation={[0.3, 0, 0]}>
-            <capsuleGeometry args={[0.045, 0.08, 6, 10]} />
-            <meshStandardMaterial color="#cbd5e1" roughness={0.25} metalness={0.65} />
+        {/* Rectangular Banded Cash Stack */}
+        <group name="h-cash" visible={false} rotation={[0.25, 0.3, 0]}>
+          <mesh>
+            <boxGeometry args={[0.18, 0.035, 0.095]} />
+            <meshStandardMaterial map={billTex} color="#dcfce7" roughness={0.55} />
           </mesh>
-          <mesh position={[0, 0, -0.042]}>
-            <circleGeometry args={[0.04, 14]} />
-            <meshStandardMaterial color="#f8fafc" roughness={0.08} metalness={0.92} />
+          <mesh>
+            <boxGeometry args={[0.04, 0.038, 0.1]} />
+            <meshStandardMaterial color="#f59e0b" roughness={0.5} />
+          </mesh>
+        </group>
+
+        {/* Detailed Side Mirror with Glass */}
+        <group name="h-mirror" visible={false}>
+          <mesh position={[0, -0.04, 0.02]} rotation={[0.2, 0, 0]}>
+            <cylinderGeometry args={[0.014, 0.02, 0.08, 8]} />
+            <meshStandardMaterial color="#18181b" roughness={0.6} />
+          </mesh>
+          <mesh scale={[1.15, 0.75, 0.65]}>
+            <sphereGeometry args={[0.06, 12, 10]} />
+            <meshStandardMaterial color="#94a3b8" roughness={0.25} metalness={0.65} />
+          </mesh>
+          <mesh position={[0, 0, -0.038]} scale={[1.1, 0.7, 1]} rotation={[0, Math.PI, 0]}>
+            <circleGeometry args={[0.045, 14]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.05} metalness={0.95} />
           </mesh>
         </group>
 
         {/* EV Charger Plug */}
         <group name="h-charger" visible={false}>
           <mesh rotation={[Math.PI / 2 - 0.15, 0, 0]}>
-            <capsuleGeometry args={[0.036, 0.15, 6, 12]} />
+            <capsuleGeometry args={[0.035, 0.15, 6, 12]} />
             <meshStandardMaterial color="#1e293b" roughness={0.4} />
           </mesh>
           <mesh position={[0, 0.015, -0.1]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.044, 0.044, 0.06, 12]} />
+            <cylinderGeometry args={[0.042, 0.042, 0.06, 12]} />
             <meshStandardMaterial color="#38bdf8" emissive="#0284c7" emissiveIntensity={0.65} />
           </mesh>
         </group>

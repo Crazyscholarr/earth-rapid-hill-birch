@@ -61643,4 +61643,4 @@ function Canvas(props) {
 	return /*#__PURE__*/ (0, import_jsx_runtime.jsx)(h, { children: /*#__PURE__*/ (0, import_jsx_runtime.jsx)(CanvasImpl, { ...props }) });
 }
 //#endregion
-export { require_with_selector as _, CatmullRomCurve3 as a, Fog as c, RepeatWrapping as d, SRGBColorSpace as f, Vector3 as g, Vector2 as h, CanvasTexture as i, LatheGeometry as l, TubeGeometry as m, useFrame as n, Color as o, Shape as p, useThree as r, ExtrudeGeometry as s, Canvas as t, PlaneGeometry as u, require_jsx_runtime as v, require_react as y };
+export { require_jsx_runtime as C, require_with_selector as S, Shape as _, CanvasTexture as a, Vector2 as b, ExtrudeGeometry as c, Mesh as d, MeshBasicMaterial as f, Scene as g, SRGBColorSpace as h, PMREMGenerator as i, Fog as l, RepeatWrapping as m, useFrame as n, CatmullRomCurve3 as o, PlaneGeometry as p, useThree as r, Color as s, Canvas as t, LatheGeometry as u, SphereGeometry as v, require_react as w, Vector3 as x, TubeGeometry as y };

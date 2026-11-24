@@ -50,7 +50,7 @@ type Up = { pump: boolean; scrub: boolean; scanner: boolean; recycle: boolean };
 
 export const sim = {
   phase: "title" as Phase,
-  player: { x: 0.8, y: 0, z: 3.4, yaw: 0.42, pitch: -0.2, vx: 0, vz: 0 },
+  player: { x: 0.0, y: 0, z: 3.8, yaw: 0.0, pitch: -0.08, vx: 0, vz: 0 },
   speed: 0,
   locked: false,
   qaOverride: false,
@@ -100,10 +100,16 @@ export const sim = {
 };
 
 const BOXES = [
-  { x0: -0.5, x1: 2.45, z0: 2.28, z1: 3.05 },
-  { x0: -11.2, x1: -1.3, z0: -8.3, z1: -3.45 },
-  { x0: -0.7, x1: 0.05, z0: 1.15, z1: 1.85 },
-  { x0: -4.7, x1: -3.3, z0: 2.7, z1: 4.5 },
+  // Left Control Console (Monitor, $, Skull, GO)
+  { x0: -2.85, x1: -1.85, z0: 2.95, z1: 4.05 },
+  // Left-Back Large Supply Cabinet (Burgers, Caps, Sponge, Taser)
+  { x0: -4.45, x1: -3.15, z0: 4.45, z1: 5.45 },
+  // Far-Left Industrial Shredder
+  { x0: -6.05, x1: -4.75, z0: 3.0, z1: 4.2 },
+  // Right Fuel Pump & EV Charger Island
+  { x0: 2.05, x1: 4.35, z0: 2.35, z1: 3.25 },
+  // Station Diner Building across the lane
+  { x0: -9.5, x1: 5.5, z0: -8.5, z1: -3.0 },
 ];
 
 let billId = 1;
@@ -119,6 +125,7 @@ const prevKeys = new Set<string>();
 
 const subs = new Set<() => void>();
 let snap = buildSnap();
+let lastEmitKey = "";
 
 export function subscribe(fn: () => void) {
   subs.add(fn);
@@ -129,7 +136,18 @@ export function getSnap() {
 }
 function emit() {
   snap = buildSnap();
+  lastEmitKey = snapKey();
   subs.forEach((fn) => fn());
+}
+function snapKey() {
+  const c = sim.car;
+  const pBucket = c && c.phase === "wait" ? Math.round((c.patience / c.maxPatience) * 40) : -1;
+  const progBucket = Math.round(sim.aimProgress * 50);
+  return `${sim.phase}|${sim.money}|${sim.stars.toFixed(1)}|${sim.day}|${sim.night > 0.55}|${sim.objective}|${sim.prompt}|${sim.aimKind}|${progBucket}|${sim.cashAmt}|${sim.toastT > 0 ? sim.toast : ""}|${sim.hold}|${sim.grade}|${sim.posterUp}|${sim.skull}|${sim.burgers}|${sim.caps}|${pBucket}|${c?.caught}|${c?.asleep}|${c?.served}|${c?.dirty}`;
+}
+function emitIfChanged() {
+  const key = snapKey();
+  if (key !== lastEmitKey) emit();
 }
 
 function toast(msg: string) {
@@ -190,27 +208,27 @@ type Kind =
   | "loot";
 
 const SPOT: Record<string, { x: number; y: number; z: number; max: number }> = {
-  nozzle: { x: -0.28, y: 1.2, z: 1.45, max: 3.1 },
-  sponge: { x: 1.62, y: 1.18, z: 2.42, max: 2.8 },
-  burger: { x: -1.15, y: 1.15, z: 3.15, max: 2.8 },
-  cap: { x: 2.05, y: 1.16, z: 2.42, max: 2.8 },
-  taser: { x: 1.82, y: 1.16, z: 2.62, max: 2.8 },
-  gold: { x: 1.02, y: 1.16, z: 2.46, max: 2.8 },
-  skull: { x: 2.15, y: 2.42, z: 1.85, max: 3.8 },
-  go: { x: 2.15, y: 1.92, z: 1.85, max: 3.8 },
-  shred: { x: -4.05, y: 1.15, z: 3.55, max: 3.0 },
-  charger: { x: -0.95, y: 1.18, z: 1.55, max: 3.0 },
+  nozzle: { x: 2.35, y: 1.18, z: 2.75, max: 3.3 },
+  charger: { x: 3.75, y: 1.18, z: 2.75, max: 3.3 },
+  gold: { x: -2.05, y: 1.05, z: 3.35, max: 3.1 },
+  skull: { x: -2.35, y: 1.08, z: 3.12, max: 3.3 },
+  go: { x: -2.55, y: 1.08, z: 3.4, max: 3.3 },
+  burger: { x: -3.49, y: 1.38, z: 5.06, max: 3.3 },
+  cap: { x: -4.02, y: 1.38, z: 4.71, max: 3.3 },
+  sponge: { x: -3.49, y: 1.09, z: 5.06, max: 3.3 },
+  taser: { x: -4.02, y: 0.96, z: 4.71, max: 3.3 },
+  shred: { x: -5.3, y: 1.15, z: 3.6, max: 3.3 },
 };
 
 let aim: { kind: Kind; id?: number } | null = null;
 
 function aimBias(kind: Kind) {
   const h = sim.hold;
-  if ((h === "nozzle" || h === "charger") && kind === "fuel") return -0.45;
-  if (h === "sponge" && kind === "body") return -0.45;
-  if ((h === "burger" || h === "cap" || h === "taser" || h === "hat") && kind === "window") return -0.45;
-  if (h === "cash" && (kind === "gold" || kind === "bill")) return -0.5;
-  if ((h === "mirror" || h === "cheese" || h === "hat") && kind === "shred") return -0.45;
+  if ((h === "nozzle" || h === "charger") && kind === "fuel") return -0.85;
+  if (h === "sponge" && kind === "body") return -0.65;
+  if ((h === "burger" || h === "cap" || h === "taser" || h === "hat") && kind === "window") return -0.55;
+  if (h === "cash" && (kind === "gold" || kind === "bill")) return -0.55;
+  if ((h === "mirror" || h === "cheese" || h === "hat") && kind === "shred") return -0.5;
   if (kind === "bill") return -0.25;
   return 0;
 }
@@ -251,11 +269,11 @@ function refreshAim() {
   for (const b of sim.bills) list.push({ kind: "bill", id: b.id, p: { x: b.x, y: b.y + 0.1, z: b.z }, max: 2.8 });
   const c = sim.car;
   if (c && c.phase === "wait") {
-    list.push({ kind: "window", p: carPoint(c, 0.62, 1.15, 0.15), max: 2.8 });
-    list.push({ kind: "fuel", p: carPoint(c, 0.52, 0.72, -0.9), max: 2.8 });
-    list.push({ kind: "body", p: carPoint(c, 0.72, 0.85, 0.15), max: 2.9 });
-    if (c.mirror && sim.hold === "none") list.push({ kind: "mirror", p: carPoint(c, 0.78, 1.2, 0.72), max: 2.5 });
-    if (c.loose && sim.hold === "none") list.push({ kind: "loot", p: carPoint(c, -0.15, 1.02, -0.45), max: 2.6 });
+    list.push({ kind: "window", p: carPoint(c, 0.62, 1.15, 0.15), max: 3.1 });
+    list.push({ kind: "fuel", p: carPoint(c, 0.62, 0.72, -0.35), max: 3.5 });
+    list.push({ kind: "body", p: carPoint(c, 0.72, 0.85, 0.1), max: 3.2 });
+    if (c.mirror && sim.hold === "none") list.push({ kind: "mirror", p: carPoint(c, 0.72, 0.9, 0.44), max: 2.8 });
+    if (c.loose && sim.hold === "none") list.push({ kind: "loot", p: carPoint(c, -0.15, 0.96, -0.35), max: 2.8 });
   }
   consider(list);
   sim.prompt = promptFor(aim);
@@ -516,7 +534,7 @@ function spawnCar() {
     honked: false,
   };
   if (sim.servedCount === 0) {
-    sim.car.x = -1.85;
+    sim.car.x = 0.0;
     sim.car.phase = "wait";
     sim.car.dirty = 0;
     sim.car.asleep = false;
@@ -931,30 +949,38 @@ function heldUse(dt: number) {
 
 function blocked(x: number, z: number) {
   if (sim.noclip) return false;
-  const r = 0.28;
-  if (x < -10.5 || x > 9.5 || z < -2.4 || z > 7.6) return true;
+  const r = 0.3;
+  if (x < -9.0 || x > 8.5 || z < -2.2 || z > 7.4) return true;
   for (const b of BOXES) {
     if (x > b.x0 - r && x < b.x1 + r && z > b.z0 - r && z < b.z1 + r) return true;
+  }
+  const c = sim.car;
+  if (c && c.phase === "wait") {
+    if (x > c.x - 1.3 - r && x < c.x + 1.3 + r && z > c.z - 0.7 - r && z < c.z + 0.7 + r) return true;
   }
   return false;
 }
 
 function tickPlayer(dt: number) {
   if (!sim.qaOverride) {
-    sim.player.yaw -= input.lookX * 0.00215;
-    sim.player.pitch -= input.lookY * 0.00215;
-    sim.player.yaw -= input.padLookX * 0.00215;
-    sim.player.pitch -= input.padLookY * 0.00215;
+    sim.player.yaw -= input.lookX * 0.0023;
+    sim.player.pitch -= input.lookY * 0.0023;
+    sim.player.yaw -= input.padLookX * 0.0023;
+    sim.player.pitch -= input.padLookY * 0.0023;
+    if (down("ArrowLeft")) sim.player.yaw += dt * 2.1;
+    if (down("ArrowRight")) sim.player.yaw -= dt * 2.1;
+    if (down("ArrowUp")) sim.player.pitch += dt * 1.6;
+    if (down("ArrowDown")) sim.player.pitch -= dt * 1.6;
     sim.player.pitch = Math.max(-1.15, Math.min(1.2, sim.player.pitch));
   }
   input.lookX = 0;
   input.lookY = 0;
   let ax = input.touchX + input.padX;
   let ay = input.touchY + input.padY;
-  if (down("KeyW") || down("ArrowUp")) ay -= 1;
-  if (down("KeyS") || down("ArrowDown")) ay += 1;
-  if (down("KeyA") || down("ArrowLeft")) ax -= 1;
-  if (down("KeyD") || down("ArrowRight")) ax += 1;
+  if (down("KeyW")) ay -= 1;
+  if (down("KeyS")) ay += 1;
+  if (down("KeyA")) ax -= 1;
+  if (down("KeyD")) ax += 1;
   const mag = Math.hypot(ax, ay);
   if (mag > 1) {
     ax /= mag;
@@ -967,9 +993,9 @@ function tickPlayer(dt: number) {
   const rz = -Math.sin(yaw);
   const wishx = rx * ax + fx * -ay;
   const wishz = rz * ax + fz * -ay;
-  const k = Math.min(1, dt * 16);
-  sim.player.vx += (wishx * 4.7 - sim.player.vx) * k;
-  sim.player.vz += (wishz * 4.7 - sim.player.vz) * k;
+  const k = Math.min(1, dt * 18);
+  sim.player.vx += (wishx * 5.6 - sim.player.vx) * k;
+  sim.player.vz += (wishz * 5.6 - sim.player.vz) * k;
   const nx = sim.player.x + sim.player.vx * dt;
   if (!blocked(nx, sim.player.z)) sim.player.x = nx;
   else sim.player.vx = 0;
@@ -988,8 +1014,8 @@ function tickCar(dt: number) {
   }
   if (c.phase === "arrive") {
     c.x -= dt * 7.2;
-    if (c.x <= -1.85) {
-      c.x = -1.85;
+    if (c.x <= 0.0) {
+      c.x = 0.0;
       c.phase = "wait";
       sfx.honk();
     }
@@ -1099,12 +1125,13 @@ export function dropHeld() {
 function pressedFresh(code: string) {
   const on = input.keys.has(code);
   const was = prevKeys.has(code);
-  return on && !was;
+  return (on && !was) || input.taps.has(code);
 }
 
 function endKeys() {
   prevKeys.clear();
   for (const k of input.keys) prevKeys.add(k);
+  input.taps.clear();
 }
 
 export function tick(dt: number) {
@@ -1116,7 +1143,7 @@ export function tick(dt: number) {
     input.dropPulse = false;
     input.wheel = 0;
     endKeys();
-    emit();
+    emitIfChanged();
     return;
   }
   if (sim.phase !== "play") {
@@ -1131,7 +1158,7 @@ export function tick(dt: number) {
       if (sim.phase === "shop" || sim.phase === "pause") sim.phase = "play";
     }
     endKeys();
-    emit();
+    emitIfChanged();
     return;
   }
   const prevNight = sim.night;
@@ -1141,7 +1168,7 @@ export function tick(dt: number) {
     sim.day += 1;
     toast(`Ngày ${sim.day}. Đêm qua nhiều khách lạ.`);
   }
-  if (!sim.qaOverride && pressedFresh("Escape")) {
+  if (!sim.qaOverride && (pressedFresh("Escape") || pressedFresh("KeyP"))) {
     sim.phase = "pause";
     endKeys();
     emit();
@@ -1161,7 +1188,8 @@ export function tick(dt: number) {
   readGrades();
   const mouse = input.shootHeld || input.padShoot;
   const eDown = down("KeyE") || input.padInteract;
-  const pulse = (mouse && !prevMouse) || (eDown && !prevE) || input.interactPulse;
+  const eTap = input.taps.has("KeyE");
+  const pulse = (mouse && !prevMouse) || (eDown && !prevE) || eTap || input.interactPulse;
   input.interactPulse = false;
   if (pulse) interact();
   if (mouse || eDown || input.interactHeld || input.padShoot) heldUse(dt);
@@ -1181,7 +1209,7 @@ export function tick(dt: number) {
   void prevEsc;
   void prevB;
   endKeys();
-  emit();
+  emitIfChanged();
 }
 
 export function startGame() {
@@ -1366,7 +1394,7 @@ function buildSnap() {
       ...s,
       owned: s.repeat ? false : Boolean(sim.up[s.id as keyof Up]),
     })),
-    showGrades: sim.hold === "nozzle",
+    showGrades: sim.hold === "nozzle" || sim.aimKind === "nozzle",
     wornHorns: sim.wornHorns,
   };
 }
@@ -1418,10 +1446,6 @@ export function requestLock() {
 
 export function onLockChange(locked: boolean) {
   sim.locked = locked;
-  if (!locked && sim.phase === "play" && !sim.qaOverride && !isCoarse()) {
-    sim.phase = "pause";
-    emit();
-  }
 }
 
 export function bootAudioOnGesture() {

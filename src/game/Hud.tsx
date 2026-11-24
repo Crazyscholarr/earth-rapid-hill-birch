@@ -191,20 +191,24 @@ export function Hud() {
           {coarse ? <Touch hold={snap.hold} /> : null}
 
           {/* Bottom Controls Hint */}
-          <div className="absolute bottom-3 left-1/2 hidden -translate-x-1/2 items-center gap-2.5 whitespace-nowrap rounded-full bg-ink/75 px-4 py-1.5 text-[11px] text-cream-dim backdrop-blur-sm sm:flex">
-            <span>WASD di chuyển</span>
+          <div className="absolute bottom-3 left-1/2 hidden -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-ink/75 px-4 py-1.5 text-[11px] text-cream-dim backdrop-blur-sm sm:flex">
+            <span>WASD đi</span>
+            <span>·</span>
+            <span>Kéo chuột / Mũi tên xoay nhìn</span>
             <span>·</span>
             <span>E / Chuột trái dùng</span>
             <span>·</span>
-            <span>X / Chuột phải cất đồ</span>
+            <span>X / Chuột phải cất</span>
             <span>·</span>
-            <span>Q truy nã</span>
+            <span>Q tờ</span>
             <span>·</span>
-            <span>R đầu lâu</span>
+            <span>R khóa làn</span>
             <span>·</span>
-            <span>G cho đi</span>
+            <span>G đi</span>
             <span>·</span>
             <span>B cửa hàng</span>
+            <span>·</span>
+            <span>P tạm dừng</span>
           </div>
         </>
       ) : null}

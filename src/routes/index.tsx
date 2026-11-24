@@ -31,8 +31,8 @@ function Home() {
         <Canvas
           className="absolute inset-0 touch-none"
           shadows
-          dpr={[1, 1.75]}
-          camera={{ fov: 68, near: 0.08, far: 160, position: [8, 5, 12] }}
+          dpr={[1, 1.5]}
+          camera={{ fov: 66, near: 0.08, far: 160, position: [8, 5, 12] }}
           gl={{ antialias: true, toneMapping: ACESFilmicToneMapping, toneMappingExposure: 0.92 }}
           onPointerDown={() => {
             if (sim.phase === "play") requestLock();
