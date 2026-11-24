@@ -1,6 +1,6 @@
 import { i as __toESM } from "../_runtime.mjs";
 import { C as require_jsx_runtime, _ as Shape, a as CanvasTexture, b as Vector2, c as ExtrudeGeometry, d as Mesh, f as MeshBasicMaterial, g as Scene, h as SRGBColorSpace, i as PMREMGenerator, l as Fog, m as RepeatWrapping, n as useFrame, o as CatmullRomCurve3, p as PlaneGeometry, r as useThree, s as Color, t as Canvas, u as LatheGeometry, v as SphereGeometry, w as require_react, x as Vector3, y as TubeGeometry } from "../_libs/@react-three/fiber+[...].mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/routes-11r_wmJ1.js
+//#region node_modules/.nitro/vite/services/ssr/assets/routes-C20EXi_l.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var GRADES = [
@@ -125,14 +125,14 @@ var NAMES = [
 	"Bo"
 ];
 var CAR_COLORS = [
-	"#3b78b8",
-	"#3a9d6e",
-	"#d64545",
-	"#e09f3e",
-	"#8b5cf6",
-	"#e06d83",
-	"#2b9eb3",
-	"#d96b34"
+	"#2c4a6e",
+	"#355e4b",
+	"#7f2929",
+	"#b07d32",
+	"#4b5563",
+	"#5b3b5c",
+	"#2d6473",
+	"#8c4a27"
 ];
 var input = {
 	keys: /* @__PURE__ */ new Set(),
@@ -1042,22 +1042,22 @@ function spawnCar() {
 		hat = null;
 	} else {
 		shirt = [
-			"#38bdf8",
-			"#f472b6",
-			"#facc15",
-			"#a3e635",
-			"#c084fc"
+			"#334e68",
+			"#7b3434",
+			"#3b4d3b",
+			"#4a4e69",
+			"#8c5a32"
 		][Math.floor(Math.random() * 5)];
-		hat = Math.random() < .55 ? [
-			"#facc15",
-			"#fb7185",
-			"#a78bfa",
-			"#22c55e"
+		hat = Math.random() < .5 ? [
+			"#854d0e",
+			"#374151",
+			"#1e3a5f",
+			"#365314"
 		][Math.floor(Math.random() * 4)] ?? null : null;
-		if (hat === face.hat && shirt === face.shirt) shirt = "#38bdf8";
+		if (hat === face.hat && shirt === face.shirt) shirt = "#334e68";
 	}
 	const asleep = sim.servedCount > 0 && job === "fuel" && !devil && Math.random() < .24;
-	const color = devil ? "#1e293b" : job === "charge" ? "#22c55e" : sim.servedCount === 0 ? "#f59e0b" : CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)];
+	const color = devil ? "#1e293b" : job === "charge" ? "#2b6b58" : sim.servedCount === 0 ? "#b8732a" : CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)];
 	sim.car = {
 		id: carId++,
 		x: 12.5,
@@ -1771,6 +1771,7 @@ function openShop() {
 }
 function setGrade(g) {
 	sim.grade = g;
+	sfx.ui();
 	emit();
 }
 function togglePoster() {
@@ -6067,31 +6068,51 @@ function Building({ sign }) {
 					1.62,
 					2.26
 				],
-				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
-					position: [
-						0,
-						0,
-						.01
-					],
-					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("planeGeometry", { args: [ww, 1.65] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
-						color: "#27272a",
-						roughness: .5
-					})]
-				}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
-					position: [
-						0,
-						0,
-						.03
-					],
-					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("planeGeometry", { args: [ww - .16, 1.5] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
-						ref: idx === 0 ? winGlow : winGlow2,
-						color: "#1e3a4c",
-						emissive: "#fbbf24",
-						emissiveIntensity: 0,
-						roughness: .12,
-						metalness: .45
-					})]
-				})]
+				children: [
+					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
+						position: [
+							0,
+							0,
+							.01
+						],
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("planeGeometry", { args: [ww, 1.65] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
+							color: "#27272a",
+							roughness: .5
+						})]
+					}),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
+						position: [
+							0,
+							0,
+							.03
+						],
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("planeGeometry", { args: [ww - .16, 1.5] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
+							ref: idx === 0 ? winGlow : winGlow2,
+							color: "#1e3a4c",
+							emissive: "#fbbf24",
+							emissiveIntensity: 0,
+							roughness: .1,
+							metalness: .5
+						})]
+					}),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
+						position: [
+							0,
+							0,
+							.045
+						],
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("capsuleGeometry", { args: [
+							.022,
+							1.46,
+							4,
+							6
+						] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
+							color: "#52525b",
+							metalness: .7,
+							roughness: .25
+						})]
+					})
+				]
 			}, idx)),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("group", {
 				position: [
@@ -6099,29 +6120,49 @@ function Building({ sign }) {
 					1.15,
 					2.26
 				],
-				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
-					position: [
-						0,
-						0,
-						.01
-					],
-					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("planeGeometry", { args: [1.25, 2.25] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
-						color: "#18181b",
-						roughness: .4,
-						metalness: .5
-					})]
-				}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
-					position: [
-						0,
-						0,
-						.03
-					],
-					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("planeGeometry", { args: [1.08, 2.08] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
-						color: "#1e3a4c",
-						roughness: .1,
-						metalness: .5
-					})]
-				})]
+				children: [
+					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
+						position: [
+							0,
+							0,
+							.01
+						],
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("planeGeometry", { args: [1.25, 2.25] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
+							color: "#18181b",
+							roughness: .4,
+							metalness: .5
+						})]
+					}),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
+						position: [
+							0,
+							0,
+							.03
+						],
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("planeGeometry", { args: [1.08, 2.08] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
+							color: "#1e3a4c",
+							roughness: .1,
+							metalness: .55
+						})]
+					}),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
+						position: [
+							.36,
+							-.05,
+							.06
+						],
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("capsuleGeometry", { args: [
+							.02,
+							.34,
+							4,
+							6
+						] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
+							color: "#e2e8f0",
+							metalness: .9,
+							roughness: .18
+						})]
+					})
+				]
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
 				position: [
@@ -7566,7 +7607,7 @@ function UtilityPoles() {
 	})] });
 }
 function Cacti() {
-	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_jsx_runtime.Fragment, { children: [
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [[
 		[
 			9.5,
 			-3.2,
@@ -7622,14 +7663,30 @@ function Cacti() {
 					0
 				],
 				castShadow: true,
-				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("capsuleGeometry", { args: [
-					.15,
-					.95,
-					6,
-					10
+				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("cylinderGeometry", { args: [
+					.14,
+					.16,
+					1.28,
+					9
 				] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
-					color: "#416a3e",
-					roughness: .88
+					color: "#3d6138",
+					roughness: .9,
+					flatShading: true
+				})]
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
+				position: [
+					0,
+					1.36,
+					0
+				],
+				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("sphereGeometry", { args: [
+					.14,
+					9,
+					6
+				] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
+					color: "#3d6138",
+					roughness: .9
 				})]
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
@@ -7650,8 +7707,9 @@ function Cacti() {
 					5,
 					8
 				] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
-					color: "#365934",
-					roughness: .88
+					color: "#32522e",
+					roughness: .9,
+					flatShading: true
 				})]
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
@@ -7672,12 +7730,57 @@ function Cacti() {
 					5,
 					8
 				] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
-					color: "#365934",
-					roughness: .88
+					color: "#32522e",
+					roughness: .9,
+					flatShading: true
 				})]
 			})
 		]
-	}, `${x}-${z}`)) });
+	}, `${x}-${z}`)), [
+		[
+			7.8,
+			-1.9,
+			.35
+		],
+		[
+			11.2,
+			3.4,
+			.42
+		],
+		[
+			-10.4,
+			2.9,
+			.38
+		],
+		[
+			-7.8,
+			-2.2,
+			.32
+		]
+	].map(([x, z, s], i) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("group", {
+		position: [
+			x,
+			0,
+			z
+		],
+		children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
+			position: [
+				0,
+				s * .5,
+				0
+			],
+			scale: [
+				1.2,
+				.75,
+				1.1
+			],
+			children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("dodecahedronGeometry", { args: [s, 1] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
+				color: "#6e734e",
+				roughness: .95,
+				flatShading: true
+			})]
+		})
+	}, `s-${i}`))] });
 }
 function Mesas() {
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [[
@@ -7724,7 +7827,8 @@ function Mesas() {
 				9
 			] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
 				color,
-				roughness: .95
+				roughness: .96,
+				flatShading: true
 			})]
 		}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("mesh", {
 			position: [
@@ -7739,7 +7843,8 @@ function Mesas() {
 				8
 			] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
 				color: "#b87e56",
-				roughness: .95
+				roughness: .96,
+				flatShading: true
 			})]
 		})]
 	}, `${x}`)), [
@@ -7777,7 +7882,8 @@ function Mesas() {
 		castShadow: true,
 		children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("dodecahedronGeometry", { args: [s, 1] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("meshStandardMaterial", {
 			color: "#946e4c",
-			roughness: .94
+			roughness: .94,
+			flatShading: true
 		})]
 	}, i))] });
 }

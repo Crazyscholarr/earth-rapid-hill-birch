@@ -67,4 +67,4 @@ export const SHOP: { id: string; name: string; desc: string; cost: number; repea
 
 export const NAMES = ["An", "Bình", "Chi", "Dũng", "Hà", "Khoa", "Linh", "Minh", "Ngọc", "Phát", "Quân", "Trang", "Vy", "Anna", "Bo"];
 
-export const CAR_COLORS = ["#3b78b8", "#3a9d6e", "#d64545", "#e09f3e", "#8b5cf6", "#e06d83", "#2b9eb3", "#d96b34"];
+export const CAR_COLORS = ["#2c4a6e", "#355e4b", "#7f2929", "#b07d32", "#4b5563", "#5b3b5c", "#2d6473", "#8c4a27"];

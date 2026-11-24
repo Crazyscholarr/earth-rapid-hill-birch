@@ -490,12 +490,12 @@ function spawnCar() {
     shirt = "#111827";
     hat = null;
   } else {
-    shirt = ["#38bdf8", "#f472b6", "#facc15", "#a3e635", "#c084fc"][Math.floor(Math.random() * 5)]!;
-    hat = Math.random() < 0.55 ? (["#facc15", "#fb7185", "#a78bfa", "#22c55e"][Math.floor(Math.random() * 4)] ?? null) : null;
-    if (hat === face.hat && shirt === face.shirt) shirt = "#38bdf8";
+    shirt = ["#334e68", "#7b3434", "#3b4d3b", "#4a4e69", "#8c5a32"][Math.floor(Math.random() * 5)]!;
+    hat = Math.random() < 0.5 ? (["#854d0e", "#374151", "#1e3a5f", "#365314"][Math.floor(Math.random() * 4)] ?? null) : null;
+    if (hat === face.hat && shirt === face.shirt) shirt = "#334e68";
   }
   const asleep = sim.servedCount > 0 && job === "fuel" && !devil && Math.random() < 0.24;
-  const color = devil ? "#1e293b" : job === "charge" ? "#22c55e" : sim.servedCount === 0 ? "#f59e0b" : CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)]!;
+  const color = devil ? "#1e293b" : job === "charge" ? "#2b6b58" : sim.servedCount === 0 ? "#b8732a" : CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)]!;
   sim.car = {
     id: carId++,
     x: 12.5,
@@ -1233,6 +1233,7 @@ export function openShop() {
 
 export function setGrade(g: Grade) {
   sim.grade = g;
+  sfx.ui();
   emit();
 }
 

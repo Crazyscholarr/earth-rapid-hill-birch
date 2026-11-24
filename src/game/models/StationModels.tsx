@@ -301,7 +301,7 @@ function Building({ sign }: { sign: CanvasTexture }) {
       <mesh geometry={awningGeo} position={[0, 2.52, 2.65]} rotation={[0.25, 0, 0]} castShadow>
         <meshStandardMaterial color="#264e52" roughness={0.5} />
       </mesh>
-      {/* Framed Diner Storefront Windows */}
+      {/* Framed Diner Storefront Windows with Aluminum Mullions */}
       {[
         [-2.8, 3.2],
         [2.6, 3.2],
@@ -318,13 +318,18 @@ function Building({ sign }: { sign: CanvasTexture }) {
               color="#1e3a4c"
               emissive="#fbbf24"
               emissiveIntensity={0}
-              roughness={0.12}
-              metalness={0.45}
+              roughness={0.1}
+              metalness={0.5}
             />
+          </mesh>
+          {/* Vertical Mullion Divider */}
+          <mesh position={[0, 0, 0.045]}>
+            <capsuleGeometry args={[0.022, 1.46, 4, 6]} />
+            <meshStandardMaterial color="#52525b" metalness={0.7} roughness={0.25} />
           </mesh>
         </group>
       ))}
-      {/* Glass Entrance Door */}
+      {/* Glass Entrance Door with Push Bar */}
       <group position={[-0.1, 1.15, 2.26]}>
         <mesh position={[0, 0, 0.01]}>
           <planeGeometry args={[1.25, 2.25]} />
@@ -332,7 +337,11 @@ function Building({ sign }: { sign: CanvasTexture }) {
         </mesh>
         <mesh position={[0, 0, 0.03]}>
           <planeGeometry args={[1.08, 2.08]} />
-          <meshStandardMaterial color="#1e3a4c" roughness={0.1} metalness={0.5} />
+          <meshStandardMaterial color="#1e3a4c" roughness={0.1} metalness={0.55} />
+        </mesh>
+        <mesh position={[0.36, -0.05, 0.06]}>
+          <capsuleGeometry args={[0.02, 0.34, 4, 6]} />
+          <meshStandardMaterial color="#e2e8f0" metalness={0.9} roughness={0.18} />
         </mesh>
       </group>
       {/* Illuminated Roof Sign */}
@@ -831,21 +840,41 @@ function Cacti() {
     [6.5, 6.8, 1.05],
     [-8.5, 6.2, 0.95],
   ];
+  const shrubs = [
+    [7.8, -1.9, 0.35],
+    [11.2, 3.4, 0.42],
+    [-10.4, 2.9, 0.38],
+    [-7.8, -2.2, 0.32],
+  ];
   return (
     <>
       {spots.map(([x, z, s]) => (
         <group key={`${x}-${z}`} position={[x!, 0, z!]} scale={s}>
+          {/* Ribbed Saguaro Trunk */}
           <mesh position={[0, 0.72, 0]} castShadow>
-            <capsuleGeometry args={[0.15, 0.95, 6, 10]} />
-            <meshStandardMaterial color="#416a3e" roughness={0.88} />
+            <cylinderGeometry args={[0.14, 0.16, 1.28, 9]} />
+            <meshStandardMaterial color="#3d6138" roughness={0.9} flatShading />
+          </mesh>
+          <mesh position={[0, 1.36, 0]}>
+            <sphereGeometry args={[0.14, 9, 6]} />
+            <meshStandardMaterial color="#3d6138" roughness={0.9} />
           </mesh>
           <mesh position={[0.24, 0.72, 0]} rotation={[0, 0, -0.78]} castShadow>
             <capsuleGeometry args={[0.075, 0.36, 5, 8]} />
-            <meshStandardMaterial color="#365934" roughness={0.88} />
+            <meshStandardMaterial color="#32522e" roughness={0.9} flatShading />
           </mesh>
           <mesh position={[-0.24, 0.88, 0]} rotation={[0, 0, 0.78]} castShadow>
             <capsuleGeometry args={[0.07, 0.3, 5, 8]} />
-            <meshStandardMaterial color="#365934" roughness={0.88} />
+            <meshStandardMaterial color="#32522e" roughness={0.9} flatShading />
+          </mesh>
+        </group>
+      ))}
+      {/* Dry Desert Sagebrush Shrubs */}
+      {shrubs.map(([x, z, s], i) => (
+        <group key={`s-${i}`} position={[x!, 0, z!]}>
+          <mesh position={[0, s! * 0.5, 0]} scale={[1.2, 0.75, 1.1]}>
+            <dodecahedronGeometry args={[s!, 1]} />
+            <meshStandardMaterial color="#6e734e" roughness={0.95} flatShading />
           </mesh>
         </group>
       ))}
@@ -866,11 +895,11 @@ function Mesas() {
         <group key={`${x}`} position={[x, 0, z]}>
           <mesh position={[0, s * 0.25, 0]}>
             <cylinderGeometry args={[s * 0.55, s * 0.98, s * 0.5, 9]} />
-            <meshStandardMaterial color={color} roughness={0.95} />
+            <meshStandardMaterial color={color} roughness={0.96} flatShading />
           </mesh>
           <mesh position={[s * 0.15, s * 0.55, -s * 0.1]}>
             <cylinderGeometry args={[s * 0.32, s * 0.5, s * 0.35, 8]} />
-            <meshStandardMaterial color="#b87e56" roughness={0.95} />
+            <meshStandardMaterial color="#b87e56" roughness={0.96} flatShading />
           </mesh>
         </group>
       ))}
@@ -882,7 +911,7 @@ function Mesas() {
       ].map(([x, z, s], i) => (
         <mesh key={i} position={[x!, s! * 0.45, z!]} rotation={[i, i * 0.7, 0]} castShadow>
           <dodecahedronGeometry args={[s!, 1]} />
-          <meshStandardMaterial color="#946e4c" roughness={0.94} />
+          <meshStandardMaterial color="#946e4c" roughness={0.94} flatShading />
         </mesh>
       ))}
     </>
