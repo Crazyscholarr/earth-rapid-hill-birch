@@ -1,5 +1,5 @@
 import { i as __toESM, r as __require, t as __commonJSMin } from "../../_runtime.mjs";
-import { c as require_with_selector, l as require_jsx_runtime, u as require_react } from "../@react-three/fiber+[...].mjs";
+import { d as require_react, l as require_with_selector, u as require_jsx_runtime } from "../@react-three/fiber+[...].mjs";
 import { i as parseHref, r as normalizeProtocolRelative } from "../tanstack__history.mjs";
 import { PassThrough, Readable } from "node:stream";
 //#region node_modules/@tanstack/router-core/dist/esm/not-found.js

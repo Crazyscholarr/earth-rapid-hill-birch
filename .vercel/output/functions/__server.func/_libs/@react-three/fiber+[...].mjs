@@ -61643,4 +61643,4 @@ function Canvas(props) {
 	return /*#__PURE__*/ (0, import_jsx_runtime.jsx)(h, { children: /*#__PURE__*/ (0, import_jsx_runtime.jsx)(CanvasImpl, { ...props }) });
 }
 //#endregion
-export { Color as a, require_with_selector as c, CanvasTexture as i, require_jsx_runtime as l, useFrame as n, Fog as o, useThree as r, SRGBColorSpace as s, Canvas as t, require_react as u };
+export { Color as a, SRGBColorSpace as c, require_react as d, CanvasTexture as i, require_with_selector as l, useFrame as n, Fog as o, useThree as r, RepeatWrapping as s, Canvas as t, require_jsx_runtime as u };

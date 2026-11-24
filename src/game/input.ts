@@ -5,6 +5,7 @@ export const input = {
   shootHeld: false,
   interactHeld: false,
   interactPulse: false,
+  dropPulse: false,
   touchX: 0,
   touchY: 0,
   padX: 0,
@@ -100,9 +101,13 @@ export function bindInput() {
   };
   const mouseDown = (e: MouseEvent) => {
     if (e.button === 0 && document.pointerLockElement) input.shootHeld = true;
+    if (e.button === 2 && document.pointerLockElement) input.dropPulse = true;
   };
   const mouseUp = (e: MouseEvent) => {
     if (e.button === 0) input.shootHeld = false;
+  };
+  const ctxMenu = (e: MouseEvent) => {
+    if (document.pointerLockElement) e.preventDefault();
   };
   const wheel = (e: WheelEvent) => {
     if (document.pointerLockElement) {
@@ -139,6 +144,7 @@ export function bindInput() {
   window.addEventListener("mousemove", move);
   window.addEventListener("mousedown", mouseDown);
   window.addEventListener("mouseup", mouseUp);
+  window.addEventListener("contextmenu", ctxMenu);
   window.addEventListener("wheel", wheel, { passive: false });
   window.addEventListener("visibilitychange", vis);
   window.addEventListener("pointerdown", pdown);
@@ -152,6 +158,7 @@ export function bindInput() {
     window.removeEventListener("mousemove", move);
     window.removeEventListener("mousedown", mouseDown);
     window.removeEventListener("mouseup", mouseUp);
+    window.removeEventListener("contextmenu", ctxMenu);
     window.removeEventListener("wheel", wheel);
     window.removeEventListener("visibilitychange", vis);
     window.removeEventListener("pointerdown", pdown);

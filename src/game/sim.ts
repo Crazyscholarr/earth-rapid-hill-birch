@@ -34,10 +34,12 @@ export type Car = {
   served: boolean;
   paidSpawn: boolean;
   gradeOk: boolean;
+  wrongFuel: number;
   warnedWrong: boolean;
   mad: boolean;
   mirror: boolean;
   patience: number;
+  maxPatience: number;
   honked: boolean;
 };
 
@@ -93,6 +95,8 @@ export const sim = {
   customer: "",
   aimKind: "" as string,
   aimPos: { x: 0, y: 0, z: 0 },
+  aimProgress: 0,
+  usePulse: 0,
 };
 
 const BOXES = [
@@ -186,19 +190,30 @@ type Kind =
   | "loot";
 
 const SPOT: Record<string, { x: number; y: number; z: number; max: number }> = {
-  nozzle: { x: -0.28, y: 1.2, z: 1.45, max: 2.8 },
-  sponge: { x: 1.62, y: 1.18, z: 2.42, max: 2.3 },
-  burger: { x: -1.15, y: 1.15, z: 3.15, max: 2.3 },
-  cap: { x: 2.05, y: 1.16, z: 2.42, max: 2.3 },
-  taser: { x: 1.82, y: 1.16, z: 2.62, max: 2.3 },
-  gold: { x: 1.02, y: 1.16, z: 2.46, max: 2.2 },
-  skull: { x: 2.15, y: 2.42, z: 1.85, max: 3.4 },
-  go: { x: 2.15, y: 1.92, z: 1.85, max: 3.4 },
-  shred: { x: -4.05, y: 1.15, z: 3.55, max: 2.4 },
-  charger: { x: -0.95, y: 1.18, z: 1.55, max: 2.5 },
+  nozzle: { x: -0.28, y: 1.2, z: 1.45, max: 3.1 },
+  sponge: { x: 1.62, y: 1.18, z: 2.42, max: 2.8 },
+  burger: { x: -1.15, y: 1.15, z: 3.15, max: 2.8 },
+  cap: { x: 2.05, y: 1.16, z: 2.42, max: 2.8 },
+  taser: { x: 1.82, y: 1.16, z: 2.62, max: 2.8 },
+  gold: { x: 1.02, y: 1.16, z: 2.46, max: 2.8 },
+  skull: { x: 2.15, y: 2.42, z: 1.85, max: 3.8 },
+  go: { x: 2.15, y: 1.92, z: 1.85, max: 3.8 },
+  shred: { x: -4.05, y: 1.15, z: 3.55, max: 3.0 },
+  charger: { x: -0.95, y: 1.18, z: 1.55, max: 3.0 },
 };
 
 let aim: { kind: Kind; id?: number } | null = null;
+
+function aimBias(kind: Kind) {
+  const h = sim.hold;
+  if ((h === "nozzle" || h === "charger") && kind === "fuel") return -0.45;
+  if (h === "sponge" && kind === "body") return -0.45;
+  if ((h === "burger" || h === "cap" || h === "taser" || h === "hat") && kind === "window") return -0.45;
+  if (h === "cash" && (kind === "gold" || kind === "bill")) return -0.5;
+  if ((h === "mirror" || h === "cheese" || h === "hat") && kind === "shred") return -0.45;
+  if (kind === "bill") return -0.25;
+  return 0;
+}
 
 function consider(list: { kind: Kind; p: { x: number; y: number; z: number }; max: number; id?: number }[]) {
   const e = eye();
@@ -211,8 +226,8 @@ function consider(list: { kind: Kind; p: { x: number; y: number; z: number }; ma
     const dist = Math.hypot(dx, dy, dz);
     if (dist > t.max || dist < 0.001) continue;
     const dot = (dx * f.x + dy * f.y + dz * f.z) / dist;
-    if (dot < 0.78) continue;
-    const score = dist + (1 - dot) * 1.4;
+    if (dot < 0.68) continue;
+    const score = dist + (1 - dot) * 1.5 + aimBias(t.kind);
     if (!best || score < best.score) best = { kind: t.kind, id: t.id, score, p: t.p };
   }
   aim = best ? { kind: best.kind, id: best.id } : null;
@@ -232,18 +247,24 @@ function refreshAim() {
   list.push({ kind: "skull", p: SPOT.skull, max: SPOT.skull.max });
   list.push({ kind: "go", p: SPOT.go, max: SPOT.go.max });
   list.push({ kind: "shred", p: SPOT.shred, max: SPOT.shred.max });
-  if (sim.mirrorDrop) list.push({ kind: "mdrop", p: { x: sim.mirrorDrop.x, y: 0.4, z: sim.mirrorDrop.z }, max: 2 });
-  for (const b of sim.bills) list.push({ kind: "bill", id: b.id, p: { x: b.x, y: b.y + 0.1, z: b.z }, max: 2.1 });
+  if (sim.mirrorDrop) list.push({ kind: "mdrop", p: { x: sim.mirrorDrop.x, y: 0.4, z: sim.mirrorDrop.z }, max: 2.6 });
+  for (const b of sim.bills) list.push({ kind: "bill", id: b.id, p: { x: b.x, y: b.y + 0.1, z: b.z }, max: 2.8 });
   const c = sim.car;
   if (c && c.phase === "wait") {
-    list.push({ kind: "window", p: carPoint(c, 0.62, 1.15, 0.15), max: 2.35 });
-    list.push({ kind: "fuel", p: carPoint(c, 0.52, 0.72, -0.9), max: 2.35 });
-    list.push({ kind: "body", p: carPoint(c, 0.72, 0.85, 0.15), max: 2.4 });
-    if (c.mirror && sim.hold === "none") list.push({ kind: "mirror", p: carPoint(c, 0.78, 1.2, 0.72), max: 2.1 });
-    if (c.loose && sim.hold === "none") list.push({ kind: "loot", p: carPoint(c, -0.15, 1.02, -0.45), max: 2.15 });
+    list.push({ kind: "window", p: carPoint(c, 0.62, 1.15, 0.15), max: 2.8 });
+    list.push({ kind: "fuel", p: carPoint(c, 0.52, 0.72, -0.9), max: 2.8 });
+    list.push({ kind: "body", p: carPoint(c, 0.72, 0.85, 0.15), max: 2.9 });
+    if (c.mirror && sim.hold === "none") list.push({ kind: "mirror", p: carPoint(c, 0.78, 1.2, 0.72), max: 2.5 });
+    if (c.loose && sim.hold === "none") list.push({ kind: "loot", p: carPoint(c, -0.15, 1.02, -0.45), max: 2.6 });
   }
   consider(list);
   sim.prompt = promptFor(aim);
+  sim.aimProgress = 0;
+  if (c && c.phase === "wait" && aim) {
+    if (aim.kind === "fuel" && (sim.hold === "nozzle" || sim.hold === "charger")) sim.aimProgress = c.fuel;
+    else if (aim.kind === "body" && sim.hold === "sponge") sim.aimProgress = c.wash;
+    else if (aim.kind === "mirror" && sim.hold === "none") sim.aimProgress = Math.min(1, sim.steal / 0.55);
+  }
 }
 
 function promptFor(t: { kind: Kind } | null) {
@@ -349,7 +370,7 @@ function take(next: Hold) {
 }
 
 function spawnBill(amount: number, x: number, y: number, z: number) {
-  sim.bills.push({ id: billId++, x, y, z, amount, life: 22, vy: 1.2 });
+  sim.bills.push({ id: billId++, x, y, z, amount, life: 55, vy: 1.2 });
 }
 
 function burst(x: number, y: number, z: number) {
@@ -425,14 +446,14 @@ function tryFinish(c: Car) {
 }
 
 function quoteFor(c: Car, ok: boolean) {
-  if (c.wanted && !c.caught) return "Mặt này quen đến khó chịu.";
-  if (!ok) return "Đổ sai. Muốn khóc giữa sa mạc.";
-  if (c.job === "charge") return "18 kWh. Coi tôi như cục pin chết.";
-  if (c.job === "wash") return c.devil ? "Hết mùi phân. Sừng không phải chân tôi." : "Sạch. Tạm thời thôi.";
-  if (c.job === "food") return "Bánh tới. Không hỏi thịt gì.";
-  if (c.job === "cap") return "Nắp đỏ đẹp, hơi vô duyên.";
-  if (c.devil) return "Lâu rồi không gặp. Đừng đội đồ lên đầu tôi.";
-  return "Ổn. Lần sau ghé, nhớ đừng giật mũ.";
+  if (c.wanted && !c.caught) return "Mặt này quen đến mức hơi rợn người.";
+  if (!ok) return "Đổ nhầm xăng rồi. Xe ho khù khụ giữa sa mạc!";
+  if (c.job === "charge") return "18 kWh. Đầy pin rồi, cảm ơn trạm nhé!";
+  if (c.job === "wash") return c.devil ? "Sạch bóng! Mà sừng là hàng Shopee, đừng giật." : "Bóng loáng như mới xuất xưởng!";
+  if (c.job === "food") return "Bánh ngon bá cháy, không hỏi nhân thịt gì.";
+  if (c.job === "cap") return "Nắp đỏ chót, đúng gu thẩm mỹ của tui.";
+  if (c.devil) return "Lâu rồi mới ghé. Nhìn tui hiền vậy thôi!";
+  return "Dịch vụ 10 điểm! Lần sau ghé tiếp.";
 }
 
 function spawnCar() {
@@ -486,10 +507,12 @@ function spawnCar() {
     served: false,
     paidSpawn: false,
     gradeOk: true,
+    wrongFuel: 0,
     warnedWrong: false,
     mad: false,
     mirror: true,
-    patience: 34,
+    patience: 40,
+    maxPatience: 40,
     honked: false,
   };
   if (sim.servedCount === 0) {
@@ -861,22 +884,27 @@ function heldUse(dt: number) {
       sim.sfxCd = 1.5;
       return;
     }
-    if (sim.grade !== c.grade) c.gradeOk = false;
+    if (sim.grade !== c.grade) {
+      c.wrongFuel += dt * (sim.up.pump ? 0.48 : 0.26);
+      if (c.wrongFuel > 0.22) c.gradeOk = false;
+      if (!c.warnedWrong) {
+        c.warnedWrong = true;
+        toast(`Nhầm loại! Đổi phím 1-4 sang ${gradeName(c.grade)} ngay.`);
+        sfx.error();
+      }
+    }
     c.fuel = Math.min(1, c.fuel + dt * (sim.up.pump ? 0.48 : 0.26));
+    sim.usePulse = 1;
     if (sim.sfxCd <= 0) {
       sfx.pump();
       sim.sfxCd = 0.28;
-    }
-    if (c.fuel >= 1 && !c.gradeOk && !c.warnedWrong) {
-      c.warnedWrong = true;
-      toast("Sai loại. Khách sẽ không trả.");
-      sfx.error();
     }
     tryFinish(c);
     return;
   }
   if (aim.kind === "body" && sim.hold === "sponge") {
     c.wash = Math.min(1, c.wash + dt * (sim.up.scrub ? 0.7 : 0.38));
+    sim.usePulse = 1;
     if (c.wash >= 1) c.dirty = 0;
     if (sim.sfxCd <= 0) {
       sfx.scrub();
@@ -1002,11 +1030,9 @@ function tickCar(dt: number) {
 }
 
 function tickWorld(dt: number) {
-  const target = sim.car && (sim.car.phase === "leave" || !sim.skull) && sim.car.phase !== "wait" ? 1 : sim.skull ? 0 : sim.car?.phase === "wait" ? 0 : 1;
-  const open = !sim.car || sim.car.phase === "leave" || (sim.car.phase === "arrive" && !sim.skull) ? 1 : 0;
-  const want = sim.car?.phase === "wait" ? (sim.skull ? 0 : 0) : open;
-  sim.barrier += ((want ? 1 : 0) - sim.barrier) * Math.min(1, dt * 4);
-  void target;
+  const wantOpen = !sim.car || sim.car.phase === "leave" || (sim.car.phase === "arrive" && !sim.skull);
+  sim.barrier += ((wantOpen ? 1 : 0) - sim.barrier) * Math.min(1, dt * 5);
+  sim.usePulse = Math.max(0, sim.usePulse - dt * 6);
   sim.toastT -= dt;
   if (sim.toastT <= 0) sim.toast = "";
   sim.spark = Math.max(0, sim.spark - dt);
@@ -1050,6 +1076,24 @@ function readGrades() {
   if (pressedFresh("Digit2")) sim.grade = "95";
   if (pressedFresh("Digit3")) sim.grade = "98";
   if (pressedFresh("Digit4")) sim.grade = "diesel";
+  if (input.wheel !== 0 && sim.hold === "nozzle") {
+    const order: Grade[] = ["92", "95", "98", "diesel"];
+    const idx = order.indexOf(sim.grade);
+    const next = (idx + (input.wheel > 0 ? 1 : -1) + order.length) % order.length;
+    sim.grade = order[next]!;
+    sfx.ui();
+  }
+  input.wheel = 0;
+}
+
+export function dropHeld() {
+  if (sim.hold === "none") return;
+  if (sim.hold === "cash") {
+    toast("Đang ôm tiền — nạp vào nút $ vàng trên quầy!");
+    return;
+  }
+  stow();
+  sfx.ui();
 }
 
 function pressedFresh(code: string) {
@@ -1065,17 +1109,12 @@ function endKeys() {
 
 export function tick(dt: number) {
   pollPad();
-  const prevNight = sim.night;
-  sim.clock += dt;
-  sim.night = nightAmount(sim.clock);
-  if (prevNight > 0.75 && sim.night < 0.2) {
-    sim.day += 1;
-    toast(`Ngày ${sim.day}. Đêm qua nhiều khách lạ.`);
-  }
   if (sim.phase === "title") {
     sim.orbit += dt * 0.12;
     input.lookX = 0;
     input.lookY = 0;
+    input.dropPulse = false;
+    input.wheel = 0;
     endKeys();
     emit();
     return;
@@ -1086,12 +1125,21 @@ export function tick(dt: number) {
     sim.speed = 0;
     input.lookX = 0;
     input.lookY = 0;
+    input.dropPulse = false;
+    input.wheel = 0;
     if (pressedFresh("Escape") || pressedFresh("KeyB")) {
       if (sim.phase === "shop" || sim.phase === "pause") sim.phase = "play";
     }
     endKeys();
     emit();
     return;
+  }
+  const prevNight = sim.night;
+  sim.clock += dt;
+  sim.night = nightAmount(sim.clock);
+  if (prevNight > 0.75 && sim.night < 0.2) {
+    sim.day += 1;
+    toast(`Ngày ${sim.day}. Đêm qua nhiều khách lạ.`);
   }
   if (!sim.qaOverride && pressedFresh("Escape")) {
     sim.phase = "pause";
@@ -1121,6 +1169,8 @@ export function tick(dt: number) {
   if (!sim.qaOverride && (pressedFresh("KeyR") || (input.padRed && !prevR))) pressSkull();
   if (!sim.qaOverride && (pressedFresh("KeyG") || (input.padBarrier && !prevG))) pressGo();
   if (!sim.qaOverride && (pressedFresh("KeyQ") || (input.padWeapon && !prevQ))) sim.posterUp = !sim.posterUp;
+  if (!sim.qaOverride && (pressedFresh("KeyX") || input.dropPulse)) dropHeld();
+  input.dropPulse = false;
   prevMouse = mouse;
   prevE = eDown;
   prevR = input.padRed;
@@ -1272,6 +1322,7 @@ export type Snap = ReturnType<typeof buildSnap>;
 
 function buildSnap() {
   const w = WARRANTS[sim.warrant % WARRANTS.length]!;
+  const c = sim.car;
   return {
     phase: sim.phase,
     money: sim.money,
@@ -1280,6 +1331,9 @@ function buildSnap() {
     night: sim.night > 0.55,
     objective: sim.objective,
     prompt: sim.prompt,
+    aimKind: sim.aimKind,
+    aimProgress: sim.aimProgress,
+    cashAmt: sim.cashAmt,
     toast: sim.toastT > 0 ? sim.toast : "",
     hold: sim.hold,
     grade: sim.grade,
@@ -1288,6 +1342,19 @@ function buildSnap() {
     review: sim.review,
     tip: TIPS[sim.tipI] ?? TIPS[0],
     customer: sim.customer,
+    carInfo:
+      c && c.phase === "wait"
+        ? {
+            name: c.name,
+            job: c.job,
+            grade: c.grade,
+            patience: Math.max(0, Math.min(1, c.patience / c.maxPatience)),
+            asleep: c.asleep,
+            caught: c.caught,
+            served: c.served,
+            dirty: c.dirty > 0.2 && c.wash < 0.95,
+          }
+        : null,
     burgers: sim.burgers,
     caps: sim.caps,
     warrantName: w.name,
