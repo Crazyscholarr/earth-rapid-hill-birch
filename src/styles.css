@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Anton", "Arial Narrow", sans-serif;
+  --color-ink: #241910;
+  --color-ink-soft: #3a2e24;
+  --color-cream: #f6edd8;
+  --color-cream-dim: #e4d3b0;
+  --color-sand: #e4c07a;
+  --color-canopy: #ef5b2a;
+  --color-gold: #f0b429;
+  --color-go: #1f8a4c;
+  --color-danger: #d7263d;
+  --color-muted: #8d7b68;
+  --color-panel: #1a1410;
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  html,
+  body {
+    height: 100%;
+    background: var(--color-ink);
+    color: var(--color-cream);
+  }
+  body {
+    font-family: var(--font-sans);
+    overflow: hidden;
+  }
+}
+
+.panel {
+  background: color-mix(in oklab, var(--color-panel) 90%, transparent);
+  color: var(--color-cream);
+  border: 1px solid color-mix(in oklab, var(--color-cream) 16%, transparent);
+  border-radius: 1rem;
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.38);
+  backdrop-filter: blur(10px);
+}
+
+.poster {
+  background:
+    linear-gradient(180deg, color-mix(in oklab, white 55%, var(--color-cream)), var(--color-cream));
+  color: var(--color-ink);
+  border-radius: 0.35rem;
+  box-shadow: 0 12px 28px rgb(0 0 0 / 0.35);
+}
+
+.btn {
+  border-radius: 0.75rem;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.7rem;
+  font-weight: 650;
+  line-height: 1.15;
+  transition: transform 140ms ease, filter 140ms ease;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.btn-go {
+  background: var(--color-go);
+  color: var(--color-cream);
+}
+.btn-stop {
+  background: var(--color-danger);
+  color: var(--color-cream);
+}
+.btn-fuel {
+  background: var(--color-ink-soft);
+  color: var(--color-cream);
+}
+.btn-fuel.on {
+  background: var(--color-canopy);
+  color: var(--color-cream);
+}
+.btn-gold {
+  background: var(--color-gold);
+  color: var(--color-ink);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--color-cream);
+  border: 1px solid color-mix(in oklab, var(--color-cream) 28%, transparent);
+}
+.btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.crosshair {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--color-cream);
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.35);
+}
+.crosshair.hot {
+  border-color: var(--color-gold);
+  transform: scale(1.15);
+}
+.crosshair.bad {
+  border-color: var(--color-danger);
+}
+
+.hurtveil {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 90px color-mix(in oklab, var(--color-danger) 75%, transparent);
+}
+
+.rainfx {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    105deg,
+    transparent 0 10px,
+    rgb(246 237 216 / 0.05) 11px 12px
+  );
+  animation: rainshift 0.7s linear infinite;
+  opacity: 0.7;
+}
+@keyframes rainshift {
+  from { background-position: 0 0; }
+  to { background-position: -48px 96px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rainfx { animation: none; }
+  .btn { transition: none; }
+}
+
+.stick {
+  width: 7.5rem;
+  height: 7.5rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--color-ink) 55%, transparent);
+  border: 2px solid color-mix(in oklab, var(--color-cream) 35%, transparent);
+  touch-action: none;
+}
+.knob {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 999px;
+  background: var(--color-cream);
+}
