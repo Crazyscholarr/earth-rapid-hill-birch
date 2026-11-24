@@ -191,7 +191,7 @@ export function Hud() {
           {coarse ? <Touch hold={snap.hold} /> : null}
 
           {/* Bottom Controls Hint */}
-          <div className="absolute bottom-3 left-1/2 hidden -translate-x-1/2 items-center gap-3 rounded-full bg-ink/70 px-4 py-1 text-[11px] text-cream-dim backdrop-blur-sm sm:flex">
+          <div className="absolute bottom-3 left-1/2 hidden -translate-x-1/2 items-center gap-2.5 whitespace-nowrap rounded-full bg-ink/75 px-4 py-1.5 text-[11px] text-cream-dim backdrop-blur-sm sm:flex">
             <span>WASD di chuyển</span>
             <span>·</span>
             <span>E / Chuột trái dùng</span>
@@ -218,8 +218,8 @@ export function Hud() {
 
 function Title() {
   return (
-    <div className="pointer-events-auto absolute inset-0 flex items-end justify-center bg-gradient-to-t from-ink/90 via-ink/45 to-transparent p-6 sm:items-center">
-      <div className="panel w-full max-w-md p-6 text-center">
+    <div className="pointer-events-auto absolute inset-0 flex items-end justify-center bg-gradient-to-t from-ink/85 via-ink/25 to-transparent p-5 sm:items-end sm:justify-start sm:p-8">
+      <div className="panel w-full max-w-md p-5 text-center sm:text-left">
         <p className="text-xs font-semibold uppercase tracking-[0.35em] text-gold">Sa mạc · Ca đêm · Tiền mặt</p>
         <h1 className="font-display mt-1 text-5xl leading-none tracking-wide text-canopy sm:text-6xl">WANTED FUEL</h1>
         <p className="mt-3 text-sm leading-relaxed text-cream-dim">
