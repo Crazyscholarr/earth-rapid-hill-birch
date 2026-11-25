@@ -100,16 +100,17 @@ export const sim = {
 };
 
 const BOXES = [
-  // Left Control Console (Monitor, $, Skull, GO)
-  { x0: -2.85, x1: -1.85, z0: 2.95, z1: 4.05 },
+  // Left Control Console & Warrant Stand
+  { x0: -3.05, x1: -1.72, z0: 2.92, z1: 4.02 },
+  { x0: -3.18, x1: -2.74, z0: 4.06, z1: 4.5 },
   // Left-Back Large Supply Cabinet (Burgers, Caps, Sponge, Taser)
-  { x0: -4.45, x1: -3.15, z0: 4.45, z1: 5.45 },
+  { x0: -4.52, x1: -3.14, z0: 4.44, z1: 5.52 },
   // Far-Left Industrial Shredder
   { x0: -6.05, x1: -4.75, z0: 3.0, z1: 4.2 },
   // Right Fuel Pump & EV Charger Island
-  { x0: 2.05, x1: 4.35, z0: 2.35, z1: 3.25 },
-  // Station Diner Building across the lane
-  { x0: -9.5, x1: 5.5, z0: -8.5, z1: -3.0 },
+  { x0: 1.85, x1: 4.55, z0: 2.3, z1: 3.35 },
+  // Station Convenience Store & Diner across the lane
+  { x0: -8.2, x1: 5.8, z0: -8.6, z1: -2.9 },
 ];
 
 let billId = 1;
@@ -208,16 +209,16 @@ type Kind =
   | "loot";
 
 const SPOT: Record<string, { x: number; y: number; z: number; max: number }> = {
-  nozzle: { x: 2.35, y: 1.18, z: 2.75, max: 3.3 },
-  charger: { x: 3.75, y: 1.18, z: 2.75, max: 3.3 },
-  gold: { x: -2.05, y: 1.05, z: 3.35, max: 3.1 },
-  skull: { x: -2.35, y: 1.08, z: 3.12, max: 3.3 },
-  go: { x: -2.55, y: 1.08, z: 3.4, max: 3.3 },
-  burger: { x: -3.49, y: 1.38, z: 5.06, max: 3.3 },
-  cap: { x: -4.02, y: 1.38, z: 4.71, max: 3.3 },
-  sponge: { x: -3.49, y: 1.09, z: 5.06, max: 3.3 },
-  taser: { x: -4.02, y: 0.96, z: 4.71, max: 3.3 },
-  shred: { x: -5.3, y: 1.15, z: 3.6, max: 3.3 },
+  nozzle: { x: 2.15, y: 1.22, z: 2.8, max: 3.4 },
+  charger: { x: 3.62, y: 1.22, z: 2.8, max: 3.4 },
+  gold: { x: -1.98, y: 1.05, z: 3.42, max: 3.2 },
+  skull: { x: -2.22, y: 1.08, z: 3.12, max: 3.3 },
+  go: { x: -2.56, y: 1.08, z: 3.32, max: 3.3 },
+  burger: { x: -3.49, y: 1.39, z: 5.06, max: 3.4 },
+  cap: { x: -4.02, y: 1.39, z: 4.71, max: 3.4 },
+  sponge: { x: -3.49, y: 1.11, z: 5.06, max: 3.4 },
+  taser: { x: -4.02, y: 0.96, z: 4.71, max: 3.4 },
+  shred: { x: -5.3, y: 1.15, z: 3.6, max: 3.4 },
 };
 
 let aim: { kind: Kind; id?: number } | null = null;
@@ -269,11 +270,11 @@ function refreshAim() {
   for (const b of sim.bills) list.push({ kind: "bill", id: b.id, p: { x: b.x, y: b.y + 0.1, z: b.z }, max: 2.8 });
   const c = sim.car;
   if (c && c.phase === "wait") {
-    list.push({ kind: "window", p: carPoint(c, 0.62, 1.15, 0.15), max: 3.1 });
-    list.push({ kind: "fuel", p: carPoint(c, 0.62, 0.72, -0.35), max: 3.5 });
-    list.push({ kind: "body", p: carPoint(c, 0.72, 0.85, 0.1), max: 3.2 });
-    if (c.mirror && sim.hold === "none") list.push({ kind: "mirror", p: carPoint(c, 0.72, 0.9, 0.44), max: 2.8 });
-    if (c.loose && sim.hold === "none") list.push({ kind: "loot", p: carPoint(c, -0.15, 0.96, -0.35), max: 2.8 });
+    list.push({ kind: "window", p: carPoint(c, 0.8, 1.08, 0.14), max: 3.4 });
+    list.push({ kind: "fuel", p: carPoint(c, 0.82, 0.72, -0.92), max: 3.7 });
+    list.push({ kind: "body", p: carPoint(c, 0.84, 0.84, 0.0), max: 3.5 });
+    if (c.mirror && sim.hold === "none") list.push({ kind: "mirror", p: carPoint(c, 0.86, 0.88, 0.56), max: 3.1 });
+    if (c.loose && sim.hold === "none") list.push({ kind: "loot", p: carPoint(c, -0.32, 0.78, 0.08), max: 3.1 });
   }
   consider(list);
   sim.prompt = promptFor(aim);
@@ -449,7 +450,7 @@ function tryFinish(c: Car) {
   c.paidSpawn = true;
   c.served = true;
   const n = payAmount(c);
-  const p = carPoint(c, 0.7, 1.25, 0.2);
+  const p = carPoint(c, 1.02, 1.25, 0.18);
   if (n > 0) {
     spawnBill(n, p.x, 1.35, p.z);
     toast(`${c.name} trả $${n}. Nhặt rồi đập nút $.`);
@@ -683,7 +684,7 @@ function zap() {
   c.paidSpawn = true;
   c.served = true;
   const n = payAmount(c);
-  const p = carPoint(c, 0.75, 1.3, 0.1);
+  const p = carPoint(c, 1.04, 1.3, 0.14);
   spawnBill(n, p.x, 1.4, p.z);
   addStars(0.14);
   sim.warrant = (sim.warrant + 1) % WARRANTS.length;
@@ -956,7 +957,7 @@ function blocked(x: number, z: number) {
   }
   const c = sim.car;
   if (c && c.phase === "wait") {
-    if (x > c.x - 1.3 - r && x < c.x + 1.3 + r && z > c.z - 0.7 - r && z < c.z + 0.7 + r) return true;
+    if (x > c.x - 1.88 - r && x < c.x + 1.88 + r && z > c.z - 0.82 - r && z < c.z + 0.82 + r) return true;
   }
   return false;
 }

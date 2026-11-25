@@ -30,10 +30,10 @@ function Home() {
       {on ? (
         <Canvas
           className="absolute inset-0 touch-none"
-          shadows
+          shadows="soft"
           dpr={[1, 1.5]}
-          camera={{ fov: 66, near: 0.08, far: 160, position: [8, 5, 12] }}
-          gl={{ antialias: true, toneMapping: ACESFilmicToneMapping, toneMappingExposure: 0.92 }}
+          camera={{ fov: 64, near: 0.08, far: 180, position: [8, 5, 12] }}
+          gl={{ antialias: true, toneMapping: ACESFilmicToneMapping, toneMappingExposure: 0.98 }}
           onPointerDown={() => {
             if (sim.phase === "play") requestLock();
           }}
