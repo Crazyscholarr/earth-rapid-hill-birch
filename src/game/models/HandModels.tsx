@@ -210,11 +210,14 @@ export function Hands() {
 
     const hat = g.getObjectByName("h-hat") as Group | null;
     if (hat) {
-      hat.visible = sim.hold === "hat";
-      hat.traverse((c) => {
-        const mat = (c as Mesh).material as MeshStandardMaterial | undefined;
-        if (mat && "color" in mat) mat.color.set(sim.hatColor);
-      });
+      const on = sim.hold === "hat";
+      hat.visible = on;
+      if (on) {
+        hat.traverse((c) => {
+          const mat = (c as Mesh).material as MeshStandardMaterial | undefined;
+          if (mat && "color" in mat) mat.color.set(sim.hatColor);
+        });
+      }
     }
     const tip = g.getObjectByName("h-nozzle-tip") as Mesh | null;
     if (tip) {

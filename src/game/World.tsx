@@ -19,105 +19,53 @@ import { LiveCar } from "@/game/models/CarModel";
 import { Bills, Bits, Bubble, Hands, Marker } from "@/game/models/HandModels";
 import { Station } from "@/game/models/StationModels";
 import { sim, tick } from "@/game/sim";
-import { paint } from "@/game/textures";
+import { createSkyPanoramaTexture, paint } from "@/game/textures";
 
 const SKY_VERT = /* glsl */ `
   varying vec3 vDir;
   void main() {
-    vDir = normalize(position);
+    vDir = position;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
 
 const SKY_FRAG = /* glsl */ `
   varying vec3 vDir;
+  uniform sampler2D uSkyTex;
   uniform float uNight;
   uniform float uTime;
   uniform vec3 uSunDir;
 
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-  }
-
-  float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(
-      mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
-      mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
-      u.y
-    );
-  }
-
-  float fbm(vec2 p) {
-    float v = 0.0;
-    v += 0.55 * noise(p);
-    v += 0.30 * noise(p * 2.15 + vec2(3.7, 1.9));
-    v += 0.15 * noise(p * 4.4 - vec2(1.2, 5.1));
-    return v;
-  }
-
   void main() {
     vec3 d = normalize(vDir);
-    float h = clamp(d.y, 0.0, 1.0);
-
-    // Day palette: rich desert azure zenith -> crisp sky -> warm sandy golden horizon haze
-    vec3 dayZenith = vec3(0.16, 0.42, 0.72);
-    vec3 dayMid = vec3(0.46, 0.68, 0.88);
-    vec3 dayHorizon = vec3(0.91, 0.81, 0.68);
-
-    // Dusk transition palette
-    vec3 duskZenith = vec3(0.14, 0.20, 0.42);
-    vec3 duskMid = vec3(0.68, 0.38, 0.32);
-    vec3 duskHorizon = vec3(0.94, 0.56, 0.32);
-
-    // Clear desert night palette
-    vec3 nightZenith = vec3(0.02, 0.04, 0.10);
-    vec3 nightMid = vec3(0.05, 0.08, 0.17);
-    vec3 nightHorizon = vec3(0.10, 0.13, 0.24);
+    // Equirectangular UV lookup into pre-baked painterly sky & cloud panorama (1 single texture read!)
+    float u = atan(d.z, d.x) * 0.15915494 + 0.5 + uTime * 0.0018;
+    float v = clamp(0.5 + d.y * 0.5, 0.01, 0.99);
+    vec3 col = texture2D(uSkyTex, vec2(u, v)).rgb;
 
     float duskAmt = smoothstep(0.0, 0.45, uNight) * (1.0 - smoothstep(0.45, 0.95, uNight));
     float darkAmt = smoothstep(0.35, 1.0, uNight);
 
-    vec3 zenith = mix(mix(dayZenith, duskZenith, duskAmt), nightZenith, darkAmt);
-    vec3 mid = mix(mix(dayMid, duskMid, duskAmt), nightMid, darkAmt);
-    vec3 horizon = mix(mix(dayHorizon, duskHorizon, duskAmt), nightHorizon, darkAmt);
+    // Warm sunset tint & crisp night darkening
+    vec3 duskTint = mix(vec3(1.15, 0.62, 0.36), vec3(0.55, 0.42, 0.68), clamp(d.y * 1.8, 0.0, 1.0));
+    col = mix(col, col * duskTint * 1.18, duskAmt);
+    col = mix(col, col * vec3(0.05, 0.08, 0.17), darkAmt);
 
-    vec3 col = mix(horizon, mid, smoothstep(0.0, 0.26, h));
-    col = mix(col, zenith, smoothstep(0.22, 0.82, h));
-
-    // Solar Mie scattering & sun disc
-    float sunDot = max(dot(d, normalize(uSunDir)), 0.0);
+    // Solar halo & crisp sun disc
+    float sunDot = max(dot(d, uSunDir), 0.0);
     float sunVis = 1.0 - darkAmt;
-    col += vec3(1.0, 0.78, 0.48) * pow(sunDot, 7.0) * 0.28 * sunVis;
-    col += vec3(1.0, 0.95, 0.82) * smoothstep(0.9982, 0.9996, sunDot) * 1.4 * sunVis;
-
-    // Wispy high-altitude desert cirrus & cumulus clouds
-    if (d.y > 0.03) {
-      vec2 uv = d.xz / (d.y + 0.18) * 1.35 + vec2(uTime * 0.008, uTime * 0.003);
-      float c = fbm(uv);
-      float cloudMask = smoothstep(0.52, 0.82, c) * smoothstep(0.03, 0.22, d.y);
-      vec3 cloudCol = mix(vec3(0.99, 0.96, 0.92), vec3(0.98, 0.68, 0.46), duskAmt);
-      cloudCol = mix(cloudCol, vec3(0.14, 0.17, 0.28), darkAmt);
-      col = mix(col, cloudCol, cloudMask * 0.58);
-    }
-
-    // Subtle stars at night
-    if (darkAmt > 0.2 && d.y > 0.1) {
-      float s = hash(floor(d.xz / (d.y + 0.4) * 240.0));
-      float star = smoothstep(0.9965, 0.9995, s) * darkAmt * smoothstep(0.1, 0.4, d.y);
-      col += vec3(0.85, 0.9, 1.0) * star * 0.85;
-    }
-
-    // Ground bounce below horizon
-    if (d.y < 0.0) {
-      col = mix(horizon, vec3(0.45, 0.34, 0.22) * (1.0 - darkAmt * 0.85), clamp(-d.y * 4.0, 0.0, 1.0));
-    }
+    col += vec3(1.0, 0.8, 0.5) * (sunDot * sunDot * sunDot * sunDot) * 0.22 * sunVis;
+    col += vec3(1.0, 0.96, 0.84) * smoothstep(0.998, 0.9995, sunDot) * 1.35 * sunVis;
 
     gl_FragColor = vec4(col, 1.0);
   }
 `;
+
+declare global {
+  interface Window {
+    __perfStats?: { calls: number; triangles: number; geometries: number; textures: number };
+  }
+}
 
 export function Scene() {
   return (
@@ -144,8 +92,7 @@ function Rig() {
   const nightFog = useMemo(() => new Color("#151b2e"), []);
 
   useEffect(() => {
-    scene.fog = new Fog("#dfc9ae", 34, 118);
-    // Crisp HDR-like desert reflection environment map for automotive clearcoat, chrome & glass
+    scene.fog = new Fog("#dfc9ae", 34, 116);
     const pmrem = new PMREMGenerator(gl);
     const envScene = new ThreeScene();
     const envTex = paint((ctx, w, h) => {
@@ -157,13 +104,12 @@ function Rig() {
       g.addColorStop(1, "#69492c");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
-      // Bright sun specular highlight in env map so metallic car bodywork gleams naturally
       ctx.fillStyle = "#ffffff";
       ctx.beginPath();
       ctx.arc(w * 0.72, h * 0.26, 6, 0, Math.PI * 2);
       ctx.fill();
-    }, 256, 128).tex;
-    const dome = new Mesh(new SphereGeometry(10, 20, 14), new MeshBasicMaterial({ map: envTex, side: BackSide }));
+    }, 128, 64).tex;
+    const dome = new Mesh(new SphereGeometry(10, 16, 12), new MeshBasicMaterial({ map: envTex, side: BackSide }));
     envScene.add(dome);
     const rt = pmrem.fromScene(envScene);
     scene.environment = rt.texture;
@@ -182,8 +128,14 @@ function Rig() {
     const fog = scene.fog;
     if (fog && "color" in fog) {
       fog.color.copy(fogCol);
-      if ("far" in fog) fog.far = 118 - n * 42;
+      if ("far" in fog) fog.far = 116 - n * 40;
     }
+    window.__perfStats = {
+      calls: gl.info.render.calls,
+      triangles: gl.info.render.triangles,
+      geometries: gl.info.memory.geometries,
+      textures: gl.info.memory.textures,
+    };
     if (sim.phase === "title") {
       const a = sim.orbit;
       camera.position.set(Math.sin(a) * 1.6 - 0.6, 2.45, 7.8 + Math.cos(a) * 0.65);
@@ -202,6 +154,8 @@ function Rig() {
 }
 
 function SkyDome() {
+  const meshRef = useRef<Mesh>(null);
+  const skyTex = useMemo(() => createSkyPanoramaTexture(), []);
   const mat = useMemo(
     () =>
       new ShaderMaterial({
@@ -210,24 +164,24 @@ function SkyDome() {
         side: BackSide,
         depthWrite: false,
         uniforms: {
+          uSkyTex: { value: skyTex },
           uNight: { value: 0 },
           uTime: { value: 0 },
           uSunDir: { value: new Vector3(0.55, 0.42, 0.45).normalize() },
         },
       }),
-    [],
+    [skyTex],
   );
 
   useFrame((state) => {
     mat.uniforms.uNight!.value = sim.night;
     mat.uniforms.uTime!.value = sim.clock;
-    // Keep sky dome centered on camera
-    state.scene.getObjectByName("sky-dome")?.position.copy(state.camera.position);
+    if (meshRef.current) meshRef.current.position.copy(state.camera.position);
   });
 
   return (
-    <mesh name="sky-dome" material={mat} frustumCulled={false} renderOrder={-10}>
-      <sphereGeometry args={[142, 32, 24]} />
+    <mesh ref={meshRef} material={mat} frustumCulled={false} renderOrder={-10}>
+      <sphereGeometry args={[142, 24, 16]} />
     </mesh>
   );
 }
@@ -236,7 +190,6 @@ function Lights() {
   const sun = useRef<DirectionalLight>(null);
   const amb = useRef<AmbientLight>(null);
   const lamp = useRef<PointLight>(null);
-  const pumpLamp = useRef<PointLight>(null);
 
   useFrame(() => {
     const n = sim.night;
@@ -244,32 +197,34 @@ function Lights() {
       sun.current.intensity = 2.05 * (1 - n * 0.84);
       sun.current.color.set(n > 0.2 ? "#ffbe7b" : "#fff2dc");
     }
-    if (amb.current) amb.current.intensity = 0.36 - n * 0.2;
-    if (lamp.current) lamp.current.intensity = 0.65 + n * 4.8;
-    if (pumpLamp.current) pumpLamp.current.intensity = 0.4 + n * 3.0;
+    if (amb.current) amb.current.intensity = 0.4 - n * 0.2;
+    if (lamp.current) {
+      // Disable point light completely during daytime so fragment shaders evaluate 0 point lights!
+      lamp.current.visible = n > 0.04;
+      if (n > 0.04) lamp.current.intensity = n * 5.2;
+    }
   });
 
   return (
     <>
-      <hemisphereLight args={["#cfe5f7", "#a8794d", 0.62]} />
-      <ambientLight ref={amb} intensity={0.36} />
+      <hemisphereLight args={["#cfe5f7", "#a8794d", 0.65]} />
+      <ambientLight ref={amb} intensity={0.4} />
       <directionalLight
         ref={sun}
-        position={[20, 24, 16]}
+        position={[18, 22, 15]}
         intensity={2.05}
         color="#fff2dc"
         castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-far={68}
-        shadow-camera-left={-20}
-        shadow-camera-right={20}
-        shadow-camera-top={20}
-        shadow-camera-bottom={-20}
-        shadow-bias={-0.0004}
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-camera-far={52}
+        shadow-camera-left={-11.5}
+        shadow-camera-right={11.5}
+        shadow-camera-top={11.5}
+        shadow-camera-bottom={-11.5}
+        shadow-bias={-0.0005}
       />
-      <pointLight ref={lamp} position={[0, 3.7, 1.8]} distance={20} decay={2} intensity={0.65} color="#ffdfa8" />
-      <pointLight ref={pumpLamp} position={[-1.4, 2.8, -3.1]} distance={16} decay={2} intensity={0.4} color="#ffd089" />
+      <pointLight ref={lamp} visible={false} position={[0, 3.7, 1.8]} distance={20} decay={2} intensity={0} color="#ffdfa8" />
     </>
   );
 }

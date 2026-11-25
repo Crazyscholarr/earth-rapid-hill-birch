@@ -98,10 +98,10 @@ export function Hud() {
                 {!car.caught && !car.served ? (
                   <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                     <div
-                      className={`h-full transition-all duration-150 ${
+                      className={`h-full w-full origin-left transition-transform duration-150 will-change-transform ${
                         car.patience > 0.45 ? "bg-go" : car.patience > 0.22 ? "bg-gold" : "bg-danger"
                       }`}
-                      style={{ width: `${Math.round(car.patience * 100)}%` }}
+                      style={{ transform: `scaleX(${Math.max(0, Math.min(1, car.patience)).toFixed(3)})` }}
                     />
                   </div>
                 ) : null}
@@ -153,7 +153,7 @@ export function Hud() {
 
           {/* Toast */}
           {snap.toast ? (
-            <div className="absolute top-20 left-1/2 w-[min(92vw,28rem)] -translate-x-1/2 rounded-xl border border-gold/40 bg-panel/95 px-4 py-2 text-center text-sm font-semibold text-cream shadow-lg backdrop-blur-md">
+            <div className="absolute top-20 left-1/2 w-[min(92vw,28rem)] -translate-x-1/2 rounded-xl border border-gold/45 bg-panel/96 px-4 py-2 text-center text-sm font-semibold text-cream shadow-md">
               {snap.toast}
             </div>
           ) : null}
@@ -183,7 +183,7 @@ export function Hud() {
 
           {/* Prompt Pill */}
           {snap.prompt ? (
-            <div className="absolute bottom-20 left-1/2 max-w-[90vw] -translate-x-1/2 rounded-full border border-white/15 bg-panel/90 px-4 py-2 text-center text-sm font-semibold shadow-lg backdrop-blur-md">
+            <div className="absolute bottom-20 left-1/2 max-w-[90vw] -translate-x-1/2 rounded-full border border-white/18 bg-panel/95 px-4 py-2 text-center text-sm font-semibold shadow-md">
               {snap.prompt}
             </div>
           ) : null}
@@ -191,7 +191,7 @@ export function Hud() {
           {coarse ? <Touch hold={snap.hold} /> : null}
 
           {/* Bottom Controls Hint */}
-          <div className="absolute bottom-3 left-1/2 hidden -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-ink/75 px-4 py-1.5 text-[11px] text-cream-dim backdrop-blur-sm sm:flex">
+          <div className="absolute bottom-3 left-1/2 hidden -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full border border-white/10 bg-panel/92 px-4 py-1.5 text-[11px] text-cream-dim sm:flex">
             <span>WASD đi</span>
             <span>·</span>
             <span>Kéo chuột / Mũi tên xoay nhìn</span>
@@ -245,7 +245,7 @@ function Title() {
 
 function Pause() {
   return (
-    <div className="pointer-events-auto absolute inset-0 grid place-items-center bg-ink/60 p-4 backdrop-blur-xs">
+    <div className="pointer-events-auto absolute inset-0 grid place-items-center bg-ink/75 p-4">
       <div className="panel w-full max-w-sm p-6 text-center">
         <p className="font-display text-4xl tracking-wide">Tạm dừng</p>
         <p className="mt-2 text-sm text-cream-dim">Chuột đang thả. Bấm Tiếp tục để khóa góc nhìn lại.</p>
@@ -271,7 +271,7 @@ function Pause() {
 
 function Shop({ snap }: { snap: ReturnType<typeof getSnap> }) {
   return (
-    <div className="pointer-events-auto absolute inset-0 grid place-items-center bg-ink/65 p-4 backdrop-blur-xs">
+    <div className="pointer-events-auto absolute inset-0 grid place-items-center bg-ink/78 p-4">
       <div className="panel max-h-[88dvh] w-full max-w-md overflow-auto p-5">
         <div className="flex items-baseline justify-between">
           <p className="font-display text-3xl tracking-wide">Nâng trạm</p>

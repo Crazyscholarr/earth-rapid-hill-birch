@@ -1,4 +1,4 @@
-import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from "three";
+import { CanvasTexture, LinearFilter, RepeatWrapping, SRGBColorSpace } from "three";
 import { GRADES, TIPS, WARRANTS } from "@/game/content";
 import { sim, type Car } from "@/game/sim";
 
@@ -207,85 +207,290 @@ export function createAsphaltTexture() {
   return p.tex;
 }
 
-export function createStoreWindowTexture(variant: "left" | "right") {
+export function createSkyPanoramaTexture() {
+  const p = paint((ctx, w, h) => {
+    // Base atmospheric gradient (zenith -> horizon -> ground bounce)
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0.0, "#1d5696");
+    g.addColorStop(0.26, "#4984bd");
+    g.addColorStop(0.44, "#92bad8");
+    g.addColorStop(0.5, "#ead6ba");
+    g.addColorStop(0.54, "#c99d6c");
+    g.addColorStop(1.0, "#6e4e32");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+
+    // High-altitude wispy cirrus streaks
+    for (let i = 0; i < 38; i++) {
+      const cx = (i * 97) % w;
+      const cy = h * (0.14 + ((i * 37) % 100) * 0.0024);
+      const cw = 90 + ((i * 53) % 150);
+      const ch = 5 + (i % 6) * 2;
+      const cg = ctx.createRadialGradient(cx, cy, 2, cx, cy, cw * 0.55);
+      cg.addColorStop(0, "rgba(255, 250, 242, 0.24)");
+      cg.addColorStop(1, "rgba(255, 250, 242, 0)");
+      ctx.fillStyle = cg;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(1, ch / (cw * 0.55));
+      ctx.beginPath();
+      ctx.arc(0, 0, cw * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Painterly desert cumulus cloud banks with warm shaded undersides & sunlit tops
+    const banks = [
+      [140, h * 0.36, 1.15],
+      [390, h * 0.33, 1.35],
+      [670, h * 0.37, 1.05],
+      [910, h * 0.34, 1.25],
+    ];
+    for (const [bx, by, bs] of banks) {
+      // Soft warm shadow base
+      for (let k = -2; k <= 2; k++) {
+        const px = bx! + k * 28 * bs!;
+        const py = by! + 8 * bs! + Math.abs(k) * 3;
+        const pr = (34 - Math.abs(k) * 5) * bs!;
+        const sg = ctx.createRadialGradient(px, py, 4, px, py, pr);
+        sg.addColorStop(0, "rgba(168, 152, 142, 0.38)");
+        sg.addColorStop(1, "rgba(168, 152, 142, 0)");
+        ctx.fillStyle = sg;
+        ctx.beginPath();
+        ctx.arc(px, py, pr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Sunlit cream cloud puffs
+      for (let k = -2; k <= 2; k++) {
+        const px = bx! + k * 25 * bs!;
+        const py = by! - (2 - Math.abs(k)) * 6 * bs!;
+        const pr = (36 - Math.abs(k) * 6) * bs!;
+        const lg = ctx.createRadialGradient(px - 5, py - 6, 3, px, py, pr);
+        lg.addColorStop(0, "rgba(255, 251, 244, 0.72)");
+        lg.addColorStop(0.55, "rgba(252, 242, 228, 0.36)");
+        lg.addColorStop(1, "rgba(252, 242, 228, 0)");
+        ctx.fillStyle = lg;
+        ctx.beginPath();
+        ctx.arc(px, py, pr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }, 1024, 512);
+  p.tex.wrapS = RepeatWrapping;
+  p.tex.generateMipmaps = false;
+  p.tex.minFilter = LinearFilter;
+  return p.tex;
+}
+
+export function createDashboardTexture() {
   return paint((ctx, w, h) => {
-    // Warm convenience store interior background
+    ctx.fillStyle = "#11141a";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "#272d38";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(4, 4, w - 8, h - 8);
+
+    // AC Vent Louvers (Left, Center, Right)
+    for (const vx of [16, 206, 444]) {
+      ctx.fillStyle = "#090b0f";
+      ctx.fillRect(vx, 22, 52, 34);
+      ctx.strokeStyle = "#3f4756";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(vx, 22, 52, 34);
+      for (let ly = 28; ly <= 50; ly += 6) {
+        ctx.beginPath();
+        ctx.moveTo(vx + 4, ly);
+        ctx.lineTo(vx + 48, ly);
+        ctx.stroke();
+      }
+    }
+
+    // Center 7-inch Infotainment Navigation Screen
+    ctx.fillStyle = "#0b1726";
+    ctx.fillRect(198, 66, 128, 78);
+    ctx.strokeStyle = "#475569";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(198, 66, 128, 78);
+    // Route map highway line
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(210, 132);
+    ctx.quadraticCurveTo(255, 102, 312, 78);
+    ctx.stroke();
+    ctx.fillStyle = "#f59e0b";
+    ctx.beginPath();
+    ctx.arc(258, 106, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "700 11px monospace";
+    ctx.fillText("ROUTE 66 · 98°F", 206, 82);
+
+    // Driver Dual Gauge Cluster (Right side in car local +X = driver side!)
+    for (const [gx, label, needleAng] of [
+      [352, "RPMx1000", -0.8],
+      [412, "KM/H", -2.1],
+    ] as const) {
+      ctx.fillStyle = "#070a10";
+      ctx.beginPath();
+      ctx.arc(gx, 96, 26, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(gx, 96, 24, Math.PI * 0.75, Math.PI * 2.25);
+      ctx.stroke();
+      ctx.strokeStyle = "#ef4444";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(gx, 96);
+      ctx.lineTo(gx + Math.cos(needleAng) * 18, 96 + Math.sin(needleAng) * 18);
+      ctx.stroke();
+      ctx.fillStyle = "#cbd5e1";
+      ctx.font = "700 8px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(label, gx, 114);
+    }
+
+    // Passenger Glovebox Seam (Left side in car local -X)
+    ctx.strokeStyle = "#232934";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(22, 74, 152, 76);
+    ctx.fillStyle = "#475569";
+    ctx.fillRect(86, 82, 24, 6);
+    ctx.textAlign = "left";
+  }, 512, 168).tex;
+}
+
+export function createStoreBackWallTexture() {
+  return paint((ctx, w, h) => {
+    // Warm recessed convenience store interior wall
     const bg = ctx.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, "#3a2e22");
-    bg.addColorStop(0.25, "#5c4732");
-    bg.addColorStop(1, "#241c14");
+    bg.addColorStop(0, "#382f27");
+    bg.addColorStop(0.18, "#4d4035");
+    bg.addColorStop(0.78, "#2b231d");
+    bg.addColorStop(1, "#1c1713");
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
 
-    // Ceiling fluorescent light strips inside store
-    ctx.fillStyle = "#fef3c7";
-    ctx.fillRect(40, 18, 160, 10);
-    ctx.fillRect(280, 18, 160, 10);
-
-    if (variant === "left") {
-      // Glowing Beverage Fridges on back wall
-      for (let f = 0; f < 3; f++) {
-        const fx = 36 + f * 145;
-        ctx.fillStyle = "#1e293b";
-        ctx.fillRect(fx, 52, 130, 185);
-        ctx.fillStyle = "#bae6fd";
-        ctx.fillRect(fx + 8, 60, 114, 168);
-        // Shelves with colorful drink cans
-        const drinkCols = ["#ef4444", "#22c55e", "#f59e0b", "#3b82f6", "#a855f7"];
-        for (let s = 0; s < 4; s++) {
-          const sy = 88 + s * 36;
-          ctx.fillStyle = "#334155";
-          ctx.fillRect(fx + 8, sy + 18, 114, 4);
-          for (let c = 0; c < 7; c++) {
-            ctx.fillStyle = drinkCols[(c + s + f) % drinkCols.length]!;
-            ctx.fillRect(fx + 14 + c * 15, sy, 11, 18);
-          }
-        }
-      }
-      // Neon "OPEN 24H" sign in corner of window
-      ctx.fillStyle = "rgba(15,23,42,0.82)";
-      ctx.fillRect(26, 26, 136, 46);
-      ctx.strokeStyle = "#ef4444";
-      ctx.lineWidth = 3;
-      ctx.strokeRect(28, 28, 132, 42);
-      ctx.fillStyle = "#fca5a5";
-      ctx.font = "900 24px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText("OPEN 24H", 94, 58);
-    } else {
-      // Snack aisles & hot coffee counter
-      for (let s = 0; s < 3; s++) {
-        const sy = 90 + s * 46;
-        ctx.fillStyle = "#44403c";
-        ctx.fillRect(36, sy + 24, w - 72, 7);
-        const snackCols = ["#eab308", "#dc2626", "#2563eb", "#16a34a", "#f97316"];
-        for (let b = 0; b < 14; b++) {
-          ctx.fillStyle = snackCols[(b + s) % snackCols.length]!;
-          ctx.fillRect(46 + b * 29, sy, 22, 24);
-        }
-      }
-      // Neon "COFFEE & SNACKS" sign
-      ctx.fillStyle = "rgba(15,23,42,0.82)";
-      ctx.fillRect(w - 210, 26, 184, 46);
-      ctx.strokeStyle = "#f59e0b";
-      ctx.lineWidth = 3;
-      ctx.strokeRect(w - 208, 28, 180, 42);
-      ctx.fillStyle = "#fde68a";
-      ctx.font = "900 20px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText("COFFEE · MART", w - 118, 56);
+    // Ceiling acoustic grid & warm LED light panels
+    ctx.fillStyle = "#fffbeb";
+    for (const lx of [90, 310, 620, 840]) {
+      ctx.fillRect(lx, 10, 110, 8);
+      const glow = ctx.createRadialGradient(lx + 55, 18, 8, lx + 55, 60, 120);
+      glow.addColorStop(0, "rgba(254, 243, 199, 0.22)");
+      glow.addColorStop(1, "rgba(254, 243, 199, 0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(lx - 60, 10, 230, 140);
+      ctx.fillStyle = "#fffbeb";
     }
 
-    // Diagonal glass reflection sheen
-    const sheen = ctx.createLinearGradient(0, 0, w, h);
-    sheen.addColorStop(0, "rgba(255,255,255,0.12)");
-    sheen.addColorStop(0.35, "rgba(255,255,255,0.02)");
-    sheen.addColorStop(0.5, "rgba(255,255,255,0.14)");
-    sheen.addColorStop(0.65, "rgba(255,255,255,0.0)");
-    sheen.addColorStop(1, "rgba(255,255,255,0.08)");
-    ctx.fillStyle = sheen;
+    // Left Bank: 4 Brushed Stainless Walk-In Beverage Cooler Doors
+    ctx.fillStyle = "#334155";
+    ctx.fillRect(36, 44, 420, 260);
+    const bottlePalette = ["#7f1d1d", "#14532d", "#78350f", "#1e3a5f", "#d6d3d1", "#0f766e"];
+    for (let d = 0; d < 4; d++) {
+      const dx = 44 + d * 102;
+      // Soft cool interior fridge illumination
+      const fg = ctx.createLinearGradient(dx, 52, dx, 286);
+      fg.addColorStop(0, "#dbeafe");
+      fg.addColorStop(0.5, "#bfdbfe");
+      fg.addColorStop(1, "#93c5fd");
+      ctx.fillStyle = fg;
+      ctx.fillRect(dx, 52, 94, 236);
+
+      // 5 Shelves of realistic muted bottles/jugs with white labels
+      for (let s = 0; s < 5; s++) {
+        const sy = 88 + s * 42;
+        ctx.fillStyle = "#475569";
+        ctx.fillRect(dx, sy + 22, 94, 4);
+        for (let b = 0; b < 6; b++) {
+          const bx = dx + 6 + b * 14.5;
+          const col = bottlePalette[(b + s * 2 + d) % bottlePalette.length]!;
+          ctx.fillStyle = col;
+          ctx.fillRect(bx, sy + 4, 10, 18);
+          ctx.fillRect(bx + 2.5, sy, 5, 5);
+          // Bottle label band
+          ctx.fillStyle = "rgba(248, 250, 252, 0.78)";
+          ctx.fillRect(bx + 1, sy + 9, 8, 6);
+        }
+      }
+      // Stainless door frame & vertical handle
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 4;
+      ctx.strokeRect(dx, 52, 94, 236);
+      ctx.fillStyle = "#cbd5e1";
+      ctx.fillRect(dx + 84, 146, 4, 42);
+    }
+
+    // Center Cashier Backboard ("CIGARETTES · COFFEE · LOTTO")
+    ctx.fillStyle = "#29221c";
+    ctx.fillRect(474, 52, 136, 175);
+    ctx.strokeStyle = "#78716c";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(474, 52, 136, 175);
+    ctx.fillStyle = "#fbbf24";
+    ctx.font = "800 14px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("HOT COFFEE", 542, 76);
+    ctx.fillStyle = "#a8a29e";
+    for (let r = 0; r < 4; r++) {
+      ctx.fillRect(486, 92 + r * 28, 112, 16);
+    }
+
+    // Right Bank: Wood-Trimmed Coffee Bar, Bakery Case & Muted Grocery Gondola
+    ctx.fillStyle = "#44372b";
+    ctx.fillRect(628, 62, 356, 230);
+    // Stainless Espresso & Coffee Brewers
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillRect(646, 110, 68, 66);
+    ctx.fillStyle = "#18181b";
+    ctx.fillRect(654, 126, 22, 34);
+    ctx.fillRect(684, 126, 22, 34);
+    ctx.fillStyle = "#dc2626";
+    ctx.fillRect(658, 115, 14, 6);
+
+    // Muted Grocery Shelves on far right
+    const packCols = ["#9a3412", "#854d0e", "#1e3a5f", "#3f6212", "#57534e", "#7f1d1d"];
+    for (let s = 0; s < 4; s++) {
+      const sy = 88 + s * 44;
+      ctx.fillStyle = "#292524";
+      ctx.fillRect(732, sy + 24, 236, 5);
+      for (let p = 0; p < 9; p++) {
+        const px = 738 + p * 25;
+        ctx.fillStyle = packCols[(p + s * 3) % packCols.length]!;
+        ctx.fillRect(px, sy + 2, 19, 22);
+        ctx.fillStyle = "rgba(255,255,255,0.65)";
+        ctx.fillRect(px + 3, sy + 7, 13, 6);
+      }
+    }
+    ctx.textAlign = "left";
+  }, 1024, 320).tex;
+}
+
+export function createIceChestTexture() {
+  return paint((ctx, w, h) => {
+    ctx.fillStyle = "#f1f5f9";
     ctx.fillRect(0, 0, w, h);
-  }, 512, 280).tex;
+    ctx.strokeStyle = "#cbd5e1";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(4, 4, w - 8, h - 8);
+    ctx.fillStyle = "#0284c7";
+    ctx.fillRect(16, 18, w - 32, 32);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 20px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("PACKAGED CUBED", w / 2, 41);
+    ctx.fillStyle = "#0369a1";
+    ctx.font = "900 68px Impact, Arial Black, sans-serif";
+    ctx.fillText("ICE", w / 2, 118);
+    ctx.textAlign = "left";
+  }, 256, 144).tex;
+}
+
+export function createStoreWindowTexture(variant: "left" | "right") {
+  void variant;
+  return createStoreBackWallTexture();
 }
 
 export function createPriceTotemTexture() {
@@ -352,41 +557,55 @@ export function createPumpTopperTexture() {
 
 export function createVendingFrontTexture() {
   return paint((ctx, w, h) => {
-    ctx.fillStyle = "#991b1b";
+    ctx.fillStyle = "#7f1d1d";
     ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "#dc2626";
-    ctx.fillRect(12, 12, w - 24, 72);
+    ctx.strokeStyle = "#450a0a";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(4, 4, w - 8, h - 8);
+    ctx.fillStyle = "#991b1b";
+    ctx.fillRect(12, 12, w - 24, 68);
     ctx.fillStyle = "#fef2f2";
-    ctx.font = "900 30px Impact, Arial Black, sans-serif";
+    ctx.font = "900 28px Impact, Arial Black, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("ICE COLD SODA", w / 2, 58);
+    ctx.fillText("COLD DRINKS", w / 2, 56);
 
-    // Lit bottle display window
-    ctx.fillStyle = "#0f172a";
-    ctx.fillRect(16, 96, w - 82, 196);
-    const cols = ["#ef4444", "#22c55e", "#f59e0b", "#38bdf8"];
+    // Dark recessed bottle display window (muted realistic bottles + labels)
+    ctx.fillStyle = "#0b111d";
+    ctx.fillRect(16, 92, w - 82, 198);
+    const cols = ["#7f1d1d", "#14532d", "#78350f", "#1e3a5f"];
     for (let r = 0; r < 4; r++) {
-      const sy = 114 + r * 45;
-      ctx.fillStyle = "#475569";
+      const sy = 110 + r * 45;
+      ctx.fillStyle = "#334155";
       ctx.fillRect(22, sy + 24, w - 94, 4);
       for (let c = 0; c < 5; c++) {
+        const bx = 28 + c * 26;
         ctx.fillStyle = cols[(r + c) % cols.length]!;
-        ctx.fillRect(28 + c * 26, sy, 18, 24);
+        ctx.fillRect(bx, sy + 4, 15, 20);
+        ctx.fillStyle = "rgba(255,255,255,0.75)";
+        ctx.fillRect(bx + 2, sy + 10, 11, 5);
       }
     }
-    // Coin & selection button strip on right
-    ctx.fillStyle = "#18181b";
-    ctx.fillRect(w - 58, 96, 42, 196);
-    for (let b = 0; b < 6; b++) {
-      ctx.fillStyle = cols[b % cols.length]!;
-      ctx.fillRect(w - 48, 120 + b * 24, 22, 14);
+    // Coin & LED price strip on right
+    ctx.fillStyle = "#14161b";
+    ctx.fillRect(w - 58, 92, 42, 198);
+    ctx.fillStyle = "#052e16";
+    ctx.fillRect(w - 52, 102, 30, 18);
+    ctx.fillStyle = "#4ade80";
+    ctx.font = "700 11px monospace";
+    ctx.fillText("1.50", w - 37, 115);
+    for (let b = 0; b < 5; b++) {
+      ctx.fillStyle = "#475569";
+      ctx.fillRect(w - 48, 132 + b * 24, 22, 12);
     }
-    // Pickup bin at bottom
+    // Pickup bin flap at bottom
     ctx.fillStyle = "#09090b";
-    ctx.fillRect(24, 312, w - 48, 48);
-    ctx.strokeStyle = "#475569";
+    ctx.fillRect(24, 308, w - 48, 52);
+    ctx.strokeStyle = "#334155";
     ctx.lineWidth = 3;
-    ctx.strokeRect(24, 312, w - 48, 48);
+    ctx.strokeRect(24, 308, w - 48, 52);
+    ctx.fillStyle = "#64748b";
+    ctx.font = "700 12px Arial";
+    ctx.fillText("PUSH", w / 2, 338);
   }, 240, 384).tex;
 }
 

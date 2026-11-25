@@ -142,8 +142,8 @@ function emit() {
 }
 function snapKey() {
   const c = sim.car;
-  const pBucket = c && c.phase === "wait" ? Math.round((c.patience / c.maxPatience) * 40) : -1;
-  const progBucket = Math.round(sim.aimProgress * 50);
+  const pBucket = c && c.phase === "wait" ? Math.round((c.patience / c.maxPatience) * 20) : -1;
+  const progBucket = Math.round(sim.aimProgress * 40);
   return `${sim.phase}|${sim.money}|${sim.stars.toFixed(1)}|${sim.day}|${sim.night > 0.55}|${sim.objective}|${sim.prompt}|${sim.aimKind}|${progBucket}|${sim.cashAmt}|${sim.toastT > 0 ? sim.toast : ""}|${sim.hold}|${sim.grade}|${sim.posterUp}|${sim.skull}|${sim.burgers}|${sim.caps}|${pBucket}|${c?.caught}|${c?.asleep}|${c?.served}|${c?.dirty}`;
 }
 function emitIfChanged() {
@@ -270,11 +270,11 @@ function refreshAim() {
   for (const b of sim.bills) list.push({ kind: "bill", id: b.id, p: { x: b.x, y: b.y + 0.1, z: b.z }, max: 2.8 });
   const c = sim.car;
   if (c && c.phase === "wait") {
-    list.push({ kind: "window", p: carPoint(c, 0.8, 1.08, 0.14), max: 3.4 });
-    list.push({ kind: "fuel", p: carPoint(c, 0.82, 0.72, -0.92), max: 3.7 });
-    list.push({ kind: "body", p: carPoint(c, 0.84, 0.84, 0.0), max: 3.5 });
-    if (c.mirror && sim.hold === "none") list.push({ kind: "mirror", p: carPoint(c, 0.86, 0.88, 0.56), max: 3.1 });
-    if (c.loose && sim.hold === "none") list.push({ kind: "loot", p: carPoint(c, -0.32, 0.78, 0.08), max: 3.1 });
+    list.push({ kind: "window", p: carPoint(c, 0.78, 1.0, 0.14), max: 3.4 });
+    list.push({ kind: "fuel", p: carPoint(c, 0.82, 0.68, -1.0), max: 3.7 });
+    list.push({ kind: "body", p: carPoint(c, 0.82, 0.78, 0.0), max: 3.5 });
+    if (c.mirror && sim.hold === "none") list.push({ kind: "mirror", p: carPoint(c, 0.86, 0.84, 0.52), max: 3.1 });
+    if (c.loose && sim.hold === "none") list.push({ kind: "loot", p: carPoint(c, -0.33, 0.52, 0.04), max: 3.1 });
   }
   consider(list);
   sim.prompt = promptFor(aim);
@@ -1413,6 +1413,9 @@ export function attachProbe() {
     setYaw: (y: number) => {
       sim.player.yaw = y;
     },
+    setPitch: (p: number) => {
+      sim.player.pitch = p;
+    },
     setPos: (x: number, z: number) => {
       sim.player.x = x;
       sim.player.z = z;
@@ -1435,6 +1438,7 @@ declare global {
       getSpeed: () => number;
       getPos: () => { x: number; z: number };
       setYaw: (y: number) => void;
+      setPitch: (p: number) => void;
       setPos: (x: number, z: number) => void;
       setKeys: (codes: string[]) => void;
     };
