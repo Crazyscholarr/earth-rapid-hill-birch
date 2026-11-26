@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { useEffect, useState } from "react";
 import { ACESFilmicToneMapping } from "three";
 import { Hud } from "@/game/Hud";
-import { bindInput } from "@/game/input";
+import { bindInput, isCoarse } from "@/game/input";
 import { attachProbe, bootAudioOnGesture, onLockChange, requestLock, sim } from "@/game/sim";
 import { Scene } from "@/game/World";
 
@@ -11,7 +11,9 @@ export const Route = createFileRoute("/")({ component: Home });
 
 function Home() {
   const [on, setOn] = useState(false);
+  const [mobile, setMobile] = useState(false);
   useEffect(() => {
+    setMobile(isCoarse());
     setOn(true);
     attachProbe();
     const off = bindInput();
@@ -31,14 +33,14 @@ function Home() {
         <Canvas
           className="absolute inset-0 touch-none"
           shadows
-          dpr={[1, 1.25]}
-          camera={{ fov: 64, near: 0.08, far: 175, position: [8, 5, 12] }}
+          dpr={mobile ? [1, 1.35] : [1, 1.2]}
+          camera={{ fov: 64, near: 0.08, far: 170, position: [8, 5, 12] }}
           gl={{
-            antialias: true,
+            antialias: !mobile,
             powerPreference: "high-performance",
             stencil: false,
             toneMapping: ACESFilmicToneMapping,
-            toneMappingExposure: 1.0,
+            toneMappingExposure: 1.02,
           }}
           onPointerDown={() => {
             if (sim.phase === "play") requestLock();

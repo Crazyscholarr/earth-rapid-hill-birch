@@ -42,7 +42,7 @@ let lastY = 0;
 let dragDist = 0;
 
 function coarse() {
-  return window.matchMedia("(pointer: coarse)").matches;
+  return window.matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints > 0 && window.innerWidth < 900);
 }
 
 function dead(x: number, y: number, dz = 0.18) {
@@ -140,14 +140,14 @@ export function bindInput() {
     if (!coarse()) return;
     const t = e.target as HTMLElement | null;
     if (t?.closest("[data-ui]")) return;
-    if (e.clientX < window.innerWidth * 0.42) return;
+    if (lookId !== null) return;
     lookId = e.pointerId;
     lastX = e.clientX;
     lastY = e.clientY;
   };
   const pmove = (e: PointerEvent) => {
     if (e.pointerId === lookId) {
-      input.lookX += (e.clientX - lastX) * 1.45;
+      input.lookX += (e.clientX - lastX) * 1.6;
       input.lookY += (e.clientY - lastY) * 1.45;
       lastX = e.clientX;
       lastY = e.clientY;
@@ -198,5 +198,8 @@ export function bindInput() {
 }
 
 export function isCoarse() {
-  return typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+  return (
+    typeof window !== "undefined" &&
+    (window.matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints > 0 && window.innerWidth < 900))
+  );
 }

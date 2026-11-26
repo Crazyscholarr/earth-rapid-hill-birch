@@ -11,7 +11,7 @@ export function paint(draw: (ctx: CanvasRenderingContext2D, w: number, h: number
   draw(ctx, w, h);
   const tex = new CanvasTexture(canvas);
   if (srgb) tex.colorSpace = SRGBColorSpace;
-  tex.anisotropy = 4;
+  tex.anisotropy = 2;
   return { canvas, ctx, tex, key: "" };
 }
 
@@ -220,13 +220,13 @@ export function createSkyPanoramaTexture() {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
 
-    // High-altitude wispy cirrus streaks
-    for (let i = 0; i < 38; i++) {
-      const cx = (i * 97) % w;
+    // High-altitude wispy cirrus streaks (scaled to canvas w x h)
+    for (let i = 0; i < 32; i++) {
+      const cx = ((i * 53) % w);
       const cy = h * (0.14 + ((i * 37) % 100) * 0.0024);
-      const cw = 90 + ((i * 53) % 150);
-      const ch = 5 + (i % 6) * 2;
-      const cg = ctx.createRadialGradient(cx, cy, 2, cx, cy, cw * 0.55);
+      const cw = 48 + ((i * 29) % 78);
+      const ch = 3 + (i % 5) * 1.4;
+      const cg = ctx.createRadialGradient(cx, cy, 1, cx, cy, cw * 0.55);
       cg.addColorStop(0, "rgba(255, 250, 242, 0.24)");
       cg.addColorStop(1, "rgba(255, 250, 242, 0)");
       ctx.fillStyle = cg;
@@ -241,18 +241,17 @@ export function createSkyPanoramaTexture() {
 
     // Painterly desert cumulus cloud banks with warm shaded undersides & sunlit tops
     const banks = [
-      [140, h * 0.36, 1.15],
-      [390, h * 0.33, 1.35],
-      [670, h * 0.37, 1.05],
-      [910, h * 0.34, 1.25],
+      [w * 0.14, h * 0.36, 0.62],
+      [w * 0.38, h * 0.33, 0.72],
+      [w * 0.65, h * 0.37, 0.58],
+      [w * 0.88, h * 0.34, 0.68],
     ];
     for (const [bx, by, bs] of banks) {
-      // Soft warm shadow base
       for (let k = -2; k <= 2; k++) {
         const px = bx! + k * 28 * bs!;
-        const py = by! + 8 * bs! + Math.abs(k) * 3;
+        const py = by! + 8 * bs! + Math.abs(k) * 2;
         const pr = (34 - Math.abs(k) * 5) * bs!;
-        const sg = ctx.createRadialGradient(px, py, 4, px, py, pr);
+        const sg = ctx.createRadialGradient(px, py, 2, px, py, pr);
         sg.addColorStop(0, "rgba(168, 152, 142, 0.38)");
         sg.addColorStop(1, "rgba(168, 152, 142, 0)");
         ctx.fillStyle = sg;
@@ -260,12 +259,11 @@ export function createSkyPanoramaTexture() {
         ctx.arc(px, py, pr, 0, Math.PI * 2);
         ctx.fill();
       }
-      // Sunlit cream cloud puffs
       for (let k = -2; k <= 2; k++) {
         const px = bx! + k * 25 * bs!;
         const py = by! - (2 - Math.abs(k)) * 6 * bs!;
         const pr = (36 - Math.abs(k) * 6) * bs!;
-        const lg = ctx.createRadialGradient(px - 5, py - 6, 3, px, py, pr);
+        const lg = ctx.createRadialGradient(px - 3, py - 4, 2, px, py, pr);
         lg.addColorStop(0, "rgba(255, 251, 244, 0.72)");
         lg.addColorStop(0.55, "rgba(252, 242, 228, 0.36)");
         lg.addColorStop(1, "rgba(252, 242, 228, 0)");
@@ -275,7 +273,7 @@ export function createSkyPanoramaTexture() {
         ctx.fill();
       }
     }
-  }, 1024, 512);
+  }, 512, 256);
   p.tex.wrapS = RepeatWrapping;
   p.tex.generateMipmaps = false;
   p.tex.minFilter = LinearFilter;
@@ -906,6 +904,145 @@ export function drawMonitor(ctx: CanvasRenderingContext2D, w: number, h: number)
   ctx.fillText(`"${sim.review}"`, 32, 368);
 }
 
+export function drawDriverFace(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  opts: { skin: string; face: string | null; mad: boolean; asleep: boolean; caught: boolean; devil: boolean },
+) {
+  ctx.fillStyle = opts.skin;
+  ctx.fillRect(0, 0, w, h);
+
+  // Subtle cheekbone warmth & jawline contour shading
+  for (const cx of [w * 0.24, w * 0.76]) {
+    const cg = ctx.createRadialGradient(cx, h * 0.58, 2, cx, h * 0.58, w * 0.18);
+    cg.addColorStop(0, opts.devil ? "rgba(127,29,29,0.35)" : "rgba(194,106,82,0.24)");
+    cg.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = cg;
+    ctx.fillRect(0, 0, w, h);
+  }
+  const jawG = ctx.createLinearGradient(0, h * 0.76, 0, h);
+  jawG.addColorStop(0, "rgba(0,0,0,0)");
+  jawG.addColorStop(1, "rgba(40,20,12,0.22)");
+  ctx.fillStyle = jawG;
+  ctx.fillRect(0, h * 0.76, w, h * 0.24);
+
+  const lx = w * 0.33;
+  const rx = w * 0.67;
+  const ey = h * 0.43;
+
+  // Eyebrows
+  ctx.strokeStyle = opts.devil ? "#18181b" : "#29201b";
+  ctx.lineWidth = 5.5;
+  ctx.lineCap = "round";
+  const angry = opts.face === "bully" || opts.mad || opts.devil;
+  const browTilt = angry ? 7 : opts.face === "thief" ? -3 : 0;
+  ctx.beginPath();
+  ctx.moveTo(lx - 15, ey - 16 - browTilt * 0.4);
+  ctx.quadraticCurveTo(lx, ey - 20, lx + 14, ey - 15 + browTilt);
+  ctx.moveTo(rx + 15, ey - 16 - browTilt * 0.4);
+  ctx.quadraticCurveTo(rx, ey - 20, rx - 14, ey - 15 + browTilt);
+  ctx.stroke();
+
+  // Eyes (Sleeping, Tased/Caught, or Alert with Iris & Catchlight!)
+  if (opts.asleep) {
+    ctx.strokeStyle = "#29201b";
+    ctx.lineWidth = 4;
+    for (const ex of [lx, rx]) {
+      ctx.beginPath();
+      ctx.arc(ex, ey, 11, 0.15 * Math.PI, 0.85 * Math.PI);
+      ctx.stroke();
+    }
+  } else if (opts.caught) {
+    ctx.strokeStyle = "#18181b";
+    ctx.lineWidth = 4;
+    for (const ex of [lx, rx]) {
+      ctx.beginPath();
+      ctx.moveTo(ex - 9, ey - 8);
+      ctx.lineTo(ex + 9, ey + 8);
+      ctx.moveTo(ex + 9, ey - 8);
+      ctx.lineTo(ex - 9, ey + 8);
+      ctx.stroke();
+    }
+  } else {
+    const erx = opts.face === "thief" ? 13.5 : 11.5;
+    const ery = opts.face === "thief" ? 11.5 : 8.5;
+    for (const ex of [lx, rx]) {
+      // Sclera
+      ctx.fillStyle = "#f8fafc";
+      ctx.beginPath();
+      ctx.ellipse(ex, ey, erx, ery, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Colored Iris + Dark Pupil + Specular Catchlight
+      ctx.fillStyle = opts.devil ? "#facc15" : "#452715";
+      ctx.beginPath();
+      ctx.arc(ex, ey + 0.5, ery * 0.68, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#09090b";
+      ctx.beginPath();
+      ctx.arc(ex, ey + 0.5, ery * 0.36, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(ex - 2.5, ey - 2, 2.1, 0, Math.PI * 2);
+      ctx.fill();
+      // Crisp Upper Eyelid Crease
+      ctx.strokeStyle = "#1c1512";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(ex, ey, erx + 0.5, ery, 0, Math.PI * 1.08, Math.PI * 1.92);
+      ctx.stroke();
+    }
+  }
+
+  // Subtle Nostril Shadow under 3D Nose
+  ctx.fillStyle = "rgba(85, 42, 24, 0.38)";
+  ctx.beginPath();
+  ctx.arc(w * 0.46, h * 0.63, 2.4, 0, Math.PI * 2);
+  ctx.arc(w * 0.54, h * 0.63, 2.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Expressive Mouth / Stubble / Grin
+  const my = h * 0.77;
+  if (opts.face === "worst") {
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.roundRect(w / 2 - 20, my - 7, 40, 14, 5);
+    ctx.fill();
+    ctx.strokeStyle = "#18181b";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(w / 2 - 18, my);
+    ctx.lineTo(w / 2 + 18, my);
+    ctx.stroke();
+  } else if (opts.asleep) {
+    ctx.fillStyle = "#451a14";
+    ctx.beginPath();
+    ctx.ellipse(w / 2, my + 2, 7, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (angry || opts.caught) {
+    ctx.strokeStyle = "#4c1d16";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(w / 2 - 14, my + 4);
+    ctx.quadraticCurveTo(w / 2, my - 4, w / 2 + 14, my + 4);
+    ctx.stroke();
+  } else {
+    // Natural shaded upper & lower lips
+    ctx.fillStyle = "rgba(124, 58, 42, 0.65)";
+    ctx.beginPath();
+    ctx.ellipse(w / 2, my + 1, 13, 4.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#5c281b";
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(w / 2 - 13, my + 1);
+    ctx.quadraticCurveTo(w / 2, my + 3.5, w / 2 + 13, my + 1);
+    ctx.stroke();
+  }
+}
+
 export function drawPoster(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const face = WARRANTS[sim.warrant % WARRANTS.length]!;
   ctx.fillStyle = "#efe6d1";
@@ -936,92 +1073,126 @@ export function drawPoster(ctx: CanvasRenderingContext2D, w: number, h: number) 
   ctx.textAlign = "center";
   ctx.fillText("WANTED", w / 2, 102);
 
+  // Broad Anatomical Shoulders + Collared Jacket + Inner Tee
   ctx.fillStyle = face.shirt;
   ctx.beginPath();
-  ctx.moveTo(w / 2 - 110, 426);
-  ctx.quadraticCurveTo(w / 2 - 105, 342, w / 2 - 32, 332);
-  ctx.lineTo(w / 2 + 32, 332);
-  ctx.quadraticCurveTo(w / 2 + 105, 342, w / 2 + 110, 426);
+  ctx.moveTo(w / 2 - 118, 426);
+  ctx.quadraticCurveTo(w / 2 - 112, 338, w / 2 - 36, 328);
+  ctx.lineTo(w / 2 + 36, 328);
+  ctx.quadraticCurveTo(w / 2 + 112, 338, w / 2 + 118, 426);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#f1f5f9";
+  ctx.beginPath();
+  ctx.moveTo(w / 2 - 24, 330);
+  ctx.lineTo(w / 2 + 24, 330);
+  ctx.lineTo(w / 2, 368);
   ctx.closePath();
   ctx.fill();
 
+  // Shaded Neck & Sculpted Jawline Head
+  ctx.fillStyle = "#d19373";
+  ctx.fillRect(w / 2 - 22, 298, 44, 38);
   ctx.fillStyle = "#d99e7e";
-  ctx.fillRect(w / 2 - 22, 304, 44, 38);
-  ctx.fillStyle = "#e8b393";
   ctx.beginPath();
-  ctx.ellipse(w / 2, 250, 56, 68, 0, 0, Math.PI * 2);
+  ctx.ellipse(w / 2 - 58, 248, 10, 18, -0.1, 0, Math.PI * 2);
+  ctx.ellipse(w / 2 + 58, 248, 10, 18, 0.1, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#d99e7e";
+  ctx.fillStyle = "#e8b393";
   ctx.beginPath();
-  ctx.ellipse(w / 2 - 58, 252, 9, 18, 0, 0, Math.PI * 2);
-  ctx.ellipse(w / 2 + 58, 252, 9, 18, 0, 0, Math.PI * 2);
+  ctx.moveTo(w / 2 - 56, 224);
+  ctx.quadraticCurveTo(w / 2 - 58, 178, w / 2, 178);
+  ctx.quadraticCurveTo(w / 2 + 58, 178, w / 2 + 56, 224);
+  ctx.quadraticCurveTo(w / 2 + 54, 278, w / 2 + 28, 304);
+  ctx.quadraticCurveTo(w / 2, 318, w / 2 - 28, 304);
+  ctx.quadraticCurveTo(w / 2 - 54, 278, w / 2 - 56, 224);
+  ctx.closePath();
   ctx.fill();
 
   if (!face.hat) {
-    ctx.fillStyle = "#27272a";
+    ctx.fillStyle = "#221e1d";
     ctx.beginPath();
-    ctx.ellipse(w / 2, 198, 57, 28, 0, Math.PI, 0);
+    ctx.moveTo(w / 2 - 58, 232);
+    ctx.quadraticCurveTo(w / 2 - 62, 168, w / 2, 168);
+    ctx.quadraticCurveTo(w / 2 + 62, 168, w / 2 + 58, 232);
+    ctx.quadraticCurveTo(w / 2 + 48, 198, w / 2, 196);
+    ctx.quadraticCurveTo(w / 2 - 48, 198, w / 2 - 58, 232);
     ctx.fill();
   }
 
-  const er = face.id === "thief" ? 13 : 9;
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.ellipse(w / 2 - 22, 240, er, er * 0.78, 0, 0, Math.PI * 2);
-  ctx.ellipse(w / 2 + 22, 240, er, er * 0.78, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#18181b";
-  ctx.beginPath();
-  ctx.arc(w / 2 - 22, 240, 4.5, 0, Math.PI * 2);
-  ctx.arc(w / 2 + 22, 240, 4.5, 0, Math.PI * 2);
-  ctx.fill();
+  // Almond Eyes with Irises & Catchlights
+  const er = face.id === "thief" ? 13.5 : 10.5;
+  for (const ex of [w / 2 - 22, w / 2 + 22]) {
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.ellipse(ex, 240, er, er * 0.76, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#452715";
+    ctx.beginPath();
+    ctx.arc(ex, 240, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#09090b";
+    ctx.beginPath();
+    ctx.arc(ex, 240, 2.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(ex - 2, 238, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   ctx.strokeStyle = "#27272a";
   ctx.lineWidth = 6;
+  ctx.lineCap = "round";
   ctx.beginPath();
   if (face.id === "bully") {
-    ctx.moveTo(w / 2 - 38, 220);
-    ctx.lineTo(w / 2 - 10, 229);
-    ctx.moveTo(w / 2 + 38, 220);
-    ctx.lineTo(w / 2 + 10, 229);
+    ctx.moveTo(w / 2 - 38, 218);
+    ctx.lineTo(w / 2 - 10, 228);
+    ctx.moveTo(w / 2 + 38, 218);
+    ctx.lineTo(w / 2 + 10, 228);
   } else {
-    ctx.moveTo(w / 2 - 36, 224);
-    ctx.lineTo(w / 2 - 10, 223);
-    ctx.moveTo(w / 2 + 36, 224);
-    ctx.lineTo(w / 2 + 10, 223);
+    ctx.moveTo(w / 2 - 36, 223);
+    ctx.lineTo(w / 2 - 10, 222);
+    ctx.moveTo(w / 2 + 36, 223);
+    ctx.lineTo(w / 2 + 10, 222);
   }
   ctx.stroke();
 
-  ctx.strokeStyle = "#b07252";
-  ctx.lineWidth = 3;
+  // Shaded Nose Bridge
+  ctx.fillStyle = "rgba(166, 102, 72, 0.38)";
   ctx.beginPath();
-  ctx.moveTo(w / 2, 244);
-  ctx.lineTo(w / 2 - 5, 266);
-  ctx.lineTo(w / 2 + 5, 268);
-  ctx.stroke();
+  ctx.moveTo(w / 2, 238);
+  ctx.lineTo(w / 2 - 9, 268);
+  ctx.lineTo(w / 2 + 6, 270);
+  ctx.closePath();
+  ctx.fill();
 
   if (face.id === "worst") {
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(w / 2 - 26, 282, 52, 16);
+    ctx.beginPath();
+    ctx.roundRect(w / 2 - 26, 280, 52, 16, 5);
+    ctx.fill();
     ctx.strokeStyle = "#18181b";
     ctx.lineWidth = 2.5;
-    ctx.strokeRect(w / 2 - 26, 282, 52, 16);
+    ctx.stroke();
   } else {
-    ctx.strokeStyle = "#7c3f28";
+    ctx.strokeStyle = "#6e3420";
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(w / 2 - 16, 290);
-    ctx.lineTo(w / 2 + 16, 290);
+    ctx.moveTo(w / 2 - 16, 289);
+    ctx.quadraticCurveTo(w / 2, 292, w / 2 + 16, 289);
     ctx.stroke();
   }
 
   if (face.hat) {
     ctx.fillStyle = face.hat;
     ctx.beginPath();
-    ctx.arc(w / 2, 204, 58, Math.PI, 0);
+    ctx.arc(w / 2, 206, 58, Math.PI, 0);
     ctx.fill();
-    ctx.fillRect(w / 2 - 64, 200, 140, 14);
+    ctx.beginPath();
+    ctx.ellipse(w / 2 + 4, 205, 68, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   ctx.fillStyle = "#18181b";

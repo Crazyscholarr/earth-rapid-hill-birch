@@ -22,6 +22,7 @@ import {
 } from "three";
 import { GRADES } from "@/game/content";
 import { mergeParts, placeGeo } from "@/game/geo";
+import { getPropGeos } from "@/game/models/PropGeos";
 import { sim } from "@/game/sim";
 import {
   createAoShadowTexture,
@@ -422,8 +423,8 @@ export function Station() {
 
       <UtilityPoles />
 
-      {/* Merged Desert Flora, Boulders & Stratified Canyon Ridges (3 Draw Calls Total!) */}
-      <mesh geometry={cactusGeo} castShadow>
+      {/* Merged Desert Flora, Boulders & Stratified Canyon Ridges (3 Draw Calls Total, Zero Shadow-Pass Cost!) */}
+      <mesh geometry={cactusGeo}>
         <meshStandardMaterial color="#365931" roughness={0.88} />
       </mesh>
       <mesh geometry={shrubGeo}>
@@ -607,7 +608,7 @@ function Building({
       </group>
 
       {/* Hollow-Front Stucco Building Shell */}
-      <mesh geometry={stuccoShellGeo} castShadow receiveShadow>
+      <mesh geometry={stuccoShellGeo} receiveShadow>
         <meshStandardMaterial color="#dfd3be" bumpMap={bump} bumpScale={0.015} roughness={0.88} />
       </mesh>
       {/* Brick Lower Wainscoting (Left & Right of Door) + Corner Pilasters */}
@@ -618,17 +619,17 @@ function Building({
         </mesh>
       ))}
       {[-5.95, 5.95].map((px) => (
-        <mesh key={px} position={[px, 1.82, 2.26]} castShadow>
+        <mesh key={px} position={[px, 1.82, 2.26]}>
           <boxGeometry args={[0.42, 3.64, 0.32]} />
           <meshStandardMaterial map={brickTex} roughness={0.88} />
         </mesh>
       ))}
 
       {/* Parapet Roof, Awning, Merged Metal Hardware & Dark Window/Door Frames */}
-      <mesh geometry={parapetGeo} position={[0, 3.66, 0]} castShadow>
+      <mesh geometry={parapetGeo} position={[0, 3.66, 0]}>
         <meshStandardMaterial color="#a63e22" roughness={0.54} />
       </mesh>
-      <mesh geometry={awningGeo} position={[0, 2.58, 2.78]} rotation={[0.16, 0, 0]} castShadow>
+      <mesh geometry={awningGeo} position={[0, 2.58, 2.78]} rotation={[0.16, 0, 0]}>
         <meshStandardMaterial color="#1f4246" roughness={0.42} metalness={0.45} />
       </mesh>
       <mesh geometry={storeMetalGeo}>
@@ -778,7 +779,7 @@ function Canopy({ ao }: { ao: CanvasTexture }) {
 
   return (
     <group>
-      <mesh geometry={fasciaGeo} position={[0, 4.02, 1.32]} castShadow>
+      <mesh geometry={fasciaGeo} position={[0, 4.02, 1.32]}>
         <meshStandardMaterial color="#a83d20" roughness={0.46} metalness={0.25} />
       </mesh>
       <mesh position={[0, 4.16, 4.95]}>
@@ -788,7 +789,7 @@ function Canopy({ ao }: { ao: CanvasTexture }) {
       <mesh geometry={soffitGeo} position={[0, 3.94, 1.32]}>
         <meshStandardMaterial color="#e2dad0" roughness={0.72} metalness={0.12} />
       </mesh>
-      <mesh geometry={steelGeo} castShadow>
+      <mesh geometry={steelGeo}>
         <meshStandardMaterial color="#272c35" roughness={0.4} metalness={0.68} />
       </mesh>
       <mesh geometry={pierGeo}>
@@ -845,6 +846,7 @@ function Props({
   concrete: CanvasTexture;
   skullMatRef: RefObject<MeshStandardMaterial | null>;
 }) {
+  const pg = useMemo(() => getPropGeos(), []);
   const consoleBaseGeo = useMemo(() => buildRoundedSlab(1.22, 1.04, 0.92, 0.14, 0.025), []);
   const consoleTopGeo = useMemo(() => buildRoundedSlab(1.3, 1.12, 0.065, 0.16, 0.02), []);
   const monitorCaseGeo = useMemo(() => buildRoundedSlab(1.02, 0.68, 0.045, 0.05, 0.015), []);
@@ -1050,23 +1052,23 @@ function Props({
         </group>
       </group>
 
-      {/* Diner Cheeseburgers */}
+      {/* Diner Cheeseburger + Fries Combo Baskets */}
       <group name="prop-burger" position={[-3.49, 1.39, 5.06]}>
         <BurgerProp bunTex={bunTex} />
       </group>
-      <group name="prop-burger-extra" position={[-3.68, 1.39, 4.94]} scale={0.9}>
+      <group name="prop-burger-extra" position={[-3.72, 1.39, 4.92]} scale={0.9}>
         <BurgerProp bunTex={bunTex} />
       </group>
 
-      {/* OEM Threaded Red Fuel Caps */}
+      {/* OEM Click-Torque Threaded Red Fuel Caps */}
       <group name="prop-cap" position={[-4.02, 1.39, 4.71]}>
         <GasCapProp />
       </group>
-      <group name="prop-cap-extra" position={[-4.18, 1.39, 4.58]} scale={0.92}>
+      <group name="prop-cap-extra" position={[-4.19, 1.39, 4.58]} scale={0.92}>
         <GasCapProp />
       </group>
 
-      {/* Auto Detailing Wash Bucket + Suds + Microfiber Sponge */}
+      {/* Auto Detailing Wash Bucket + Suds + Figure-8 Bone Car Sponge */}
       <group position={[-3.49, 0.91, 5.06]}>
         <mesh position={[0, 0.1, 0]}>
           <cylinderGeometry args={[0.155, 0.12, 0.2, 14]} />
@@ -1074,40 +1076,33 @@ function Props({
         </mesh>
         <mesh position={[0, 0.19, 0]} rotation={[0.45, 0, 0]}>
           <torusGeometry args={[0.16, 0.007, 6, 14, Math.PI]} />
-          <meshStandardMaterial color="#e2e8f0" metalness={0.9} roughness={0.2} />
+          <meshStandardMaterial color="#e2e8f0" metalness={0.85} roughness={0.2} />
         </mesh>
         <mesh position={[0, 0.18, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[0.142, 14]} />
           <meshStandardMaterial color="#e0f2fe" roughness={0.18} />
         </mesh>
       </group>
-      <group name="prop-sponge" position={[-3.49, 1.11, 5.06]}>
-        <mesh rotation={[0, 0.25, Math.PI / 2]}>
-          <capsuleGeometry args={[0.052, 0.13, 6, 10]} />
+      <group name="prop-sponge" position={[-3.49, 1.11, 5.06]} rotation={[0, 0.35, 0]} scale={1.12}>
+        <mesh geometry={pg.spongeYellowGeo}>
           <meshStandardMaterial map={spongeTex} roughness={0.92} />
         </mesh>
-        <mesh position={[0, 0.04, 0]} rotation={[0, 0.25, Math.PI / 2]}>
-          <capsuleGeometry args={[0.046, 0.13, 6, 10]} />
+        <mesh geometry={pg.spongeGreenGeo}>
           <meshStandardMaterial color="#15803d" roughness={0.95} />
         </mesh>
       </group>
 
-      {/* Police-Issue X26 Stun Gun / Taser */}
-      <group name="prop-taser" position={[-4.02, 0.96, 4.71]} rotation={[0, 0.42, 0]}>
-        <mesh>
-          <boxGeometry args={[0.24, 0.082, 0.058]} />
+      {/* Tactical Pistol-Grip X26 Stun Gun / Taser Lying on Shelf */}
+      <group name="prop-taser" position={[-4.02, 0.96, 4.71]} rotation={[0, -1.15, Math.PI / 2]} scale={1.15}>
+        <mesh geometry={pg.taserDarkGeo}>
+          <meshStandardMaterial color="#18181b" roughness={0.68} />
+        </mesh>
+        <mesh geometry={pg.taserYellowGeo}>
           <meshStandardMaterial color="#eab308" roughness={0.36} />
         </mesh>
-        <mesh position={[-0.05, -0.065, 0]} rotation={[0, 0, 0.28]}>
-          <boxGeometry args={[0.058, 0.11, 0.048]} />
-          <meshStandardMaterial color="#18181b" roughness={0.72} />
+        <mesh geometry={pg.taserArcGeo}>
+          <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={1.1} />
         </mesh>
-        {[-0.018, 0.018].map((tz) => (
-          <mesh key={tz} position={[0.14, 0.012, tz]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.009, 0.009, 0.055, 6]} />
-            <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={1.0} />
-          </mesh>
-        ))}
       </group>
 
       {/* ============================================================
@@ -1209,18 +1204,16 @@ function Props({
         </mesh>
       </group>
 
-      {/* Holstered Aluminum Fuel Nozzle */}
-      <group name="prop-nozzle" position={[2.12, 1.26, 2.8]}>
-        <mesh rotation={[0.35, 0, -0.45]}>
-          <boxGeometry args={[0.055, 0.18, 0.08]} />
+      {/* Holstered OPW Automatic Fuel Nozzle */}
+      <group name="prop-nozzle" position={[2.08, 1.24, 2.8]} rotation={[0.95, 1.57, 0]}>
+        <mesh geometry={pg.nozzleMetalGeo}>
+          <meshStandardMaterial color="#d8e0ea" roughness={0.22} metalness={0.85} />
+        </mesh>
+        <mesh geometry={pg.nozzleBootGeo}>
           <meshStandardMaterial
             color={GRADES.find((g) => g.id === sim.grade)?.color ?? "#f59e0b"}
-            roughness={0.32}
+            roughness={0.34}
           />
-        </mesh>
-        <mesh position={[0.04, 0.1, 0]} rotation={[0, 0, -0.65]}>
-          <cylinderGeometry args={[0.014, 0.016, 0.16, 10]} />
-          <meshStandardMaterial color="#e2e8f0" roughness={0.2} metalness={0.9} />
         </mesh>
       </group>
 
@@ -1258,14 +1251,12 @@ function Props({
           <meshStandardMaterial color="#141417" roughness={0.72} />
         </mesh>
       </group>
-      <group name="prop-charger" position={[3.62, 1.24, 2.8]} rotation={[0.45, -0.2, 0]}>
-        <mesh rotation={[0, 0, Math.PI / 2]}>
-          <capsuleGeometry args={[0.036, 0.15, 6, 10]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.36} metalness={0.45} />
+      <group name="prop-charger" position={[3.6, 1.22, 2.8]} rotation={[0.95, 1.57, 0]}>
+        <mesh geometry={pg.chargerDarkGeo}>
+          <meshStandardMaterial color="#1e293b" roughness={0.36} metalness={0.35} />
         </mesh>
-        <mesh position={[-0.11, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.048, 0.048, 0.08, 12]} />
-          <meshStandardMaterial color="#38bdf8" emissive="#0284c7" emissiveIntensity={0.85} />
+        <mesh geometry={pg.chargerCyanGeo}>
+          <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={1.1} />
         </mesh>
       </group>
     </group>
@@ -1273,54 +1264,40 @@ function Props({
 }
 
 function BurgerProp({ bunTex }: { bunTex: CanvasTexture }) {
+  const pg = useMemo(() => getPropGeos(), []);
   return (
     <group>
-      <mesh position={[0, -0.03, 0]}>
-        <boxGeometry args={[0.25, 0.028, 0.22]} />
+      <mesh geometry={pg.burgerBasketGeo}>
         <meshStandardMaterial color="#dc2626" roughness={0.48} />
       </mesh>
-      <mesh position={[0, -0.014, 0]} rotation={[0, 0.35, 0]}>
-        <boxGeometry args={[0.21, 0.006, 0.19]} />
-        <meshStandardMaterial color="#fef3c7" roughness={0.85} />
+      <mesh geometry={pg.burgerBunAndFriesGeo}>
+        <meshStandardMaterial map={bunTex} roughness={0.68} />
       </mesh>
-      <mesh position={[0, -0.002, 0]}>
-        <cylinderGeometry args={[0.098, 0.092, 0.024, 14]} />
-        <meshStandardMaterial color="#d97706" roughness={0.72} />
-      </mesh>
-      <mesh position={[0, 0.02, 0]}>
-        <cylinderGeometry args={[0.104, 0.104, 0.028, 14]} />
+      <mesh geometry={pg.burgerPattyGeo}>
         <meshStandardMaterial color="#5c2810" roughness={0.88} />
       </mesh>
-      <mesh position={[0, 0.036, 0]} rotation={[0, 0.5, 0]}>
-        <boxGeometry args={[0.165, 0.007, 0.165]} />
-        <meshStandardMaterial color="#f59e0b" roughness={0.45} />
+      <mesh geometry={pg.burgerCheeseGeo}>
+        <meshStandardMaterial color="#f59e0b" roughness={0.42} />
       </mesh>
-      <mesh position={[0, 0.046, 0]}>
-        <cylinderGeometry args={[0.108, 0.108, 0.014, 14]} />
-        <meshStandardMaterial color="#65a30d" roughness={0.8} />
+      <mesh geometry={pg.burgerLettuceGeo}>
+        <meshStandardMaterial color="#65a30d" roughness={0.78} />
       </mesh>
-      <mesh position={[0, 0.058, 0]}>
-        <sphereGeometry args={[0.102, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.54]} />
-        <meshStandardMaterial map={bunTex} roughness={0.68} />
+      <mesh geometry={pg.burgerTomatoGeo}>
+        <meshStandardMaterial color="#dc2626" roughness={0.35} />
       </mesh>
     </group>
   );
 }
 
 function GasCapProp() {
+  const pg = useMemo(() => getPropGeos(), []);
   return (
     <group>
-      <mesh position={[0, -0.022, 0]}>
-        <cylinderGeometry args={[0.072, 0.072, 0.048, 14]} />
-        <meshStandardMaterial color="#18181b" roughness={0.65} />
+      <mesh geometry={pg.capDarkGeo}>
+        <meshStandardMaterial color="#18181b" roughness={0.68} />
       </mesh>
-      <mesh position={[0, 0.018, 0]}>
-        <cylinderGeometry args={[0.106, 0.11, 0.045, 16]} />
-        <meshStandardMaterial color="#dc2626" roughness={0.3} metalness={0.25} />
-      </mesh>
-      <mesh position={[0, 0.052, 0]}>
-        <boxGeometry args={[0.17, 0.032, 0.036]} />
-        <meshStandardMaterial color="#ef4444" roughness={0.32} metalness={0.2} />
+      <mesh geometry={pg.capRedGeo}>
+        <meshStandardMaterial color="#dc2626" roughness={0.3} metalness={0.2} />
       </mesh>
     </group>
   );

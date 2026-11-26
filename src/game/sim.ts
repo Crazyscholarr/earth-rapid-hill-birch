@@ -324,10 +324,10 @@ function promptFor(t: { kind: Kind } | null) {
       if (sim.hold === "none" && sim.car?.hat) return "E — Giật mũ";
       return "Cửa kính tài xế";
     case "fuel":
-      if (sim.car?.job === "charge") return sim.hold === "charger" ? "Giữ chuột — sạc 18 kWh" : "Cửa sạc — cần đầu cắm";
-      return sim.hold === "nozzle" ? `Giữ chuột — đổ ${gradeName(sim.grade)}` : "Cửa bình xăng";
+      if (sim.car?.job === "charge") return sim.hold === "charger" ? "Nhấn giữ — sạc 18 kWh" : "Cửa sạc — cần đầu cắm";
+      return sim.hold === "nozzle" ? `Nhấn giữ — đổ ${gradeName(sim.grade)}` : "Cửa bình xăng";
     case "body":
-      return sim.hold === "sponge" ? "Giữ chuột — kỳ cho sạch" : "Thân xe";
+      return sim.hold === "sponge" ? "Nhấn giữ — kỳ cho sạch" : "Thân xe";
     case "mirror":
       return "Giữ E — tháo gương";
     case "loot":
@@ -1224,6 +1224,13 @@ export function startGame() {
 export function resumeGame() {
   sim.phase = "play";
   emit();
+}
+
+export function pauseGame() {
+  if (sim.phase === "play") {
+    sim.phase = "pause";
+    emit();
+  }
 }
 
 export function openShop() {

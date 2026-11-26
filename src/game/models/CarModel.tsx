@@ -26,6 +26,8 @@ import {
   createMudTexture,
   createPlateTexture,
   createTireTreadTexture,
+  drawDriverFace,
+  paint,
 } from "@/game/textures";
 
 type CarStyle = "sedan" | "ev" | "devil";
@@ -347,6 +349,98 @@ function buildWheelAlloyRimGeo(): BufferGeometry {
   return mergeParts(parts);
 }
 
+function buildDriverGeometries() {
+  // 1. Seated Denim Thighs, Knees & Calves (1 single draw call)
+  const legsParts: BufferGeometry[] = [];
+  for (const lx of [-0.076, 0.076]) {
+    legsParts.push(placeGeo(new CapsuleGeometry(0.056, 0.22, 5, 8), [lx, 0.02, 0.14], [Math.PI / 2 - 0.12, 0, 0]));
+    legsParts.push(placeGeo(new SphereGeometry(0.052, 8, 6), [lx, 0.005, 0.26]));
+    legsParts.push(placeGeo(new CapsuleGeometry(0.045, 0.18, 5, 8), [lx, -0.065, 0.34], [0.58, 0, 0]));
+  }
+
+  // 2. Anatomical Broad-Shouldered Jacket + Open Lapels + Seamless Shoulder/Elbow/Forearm Sleeves (1 draw call!)
+  const jacketParts: BufferGeometry[] = [
+    placeGeo(new CylinderGeometry(0.162, 0.128, 0.3, 12), [0, 0.2, -0.045], [-0.14, 0, 0], [1.08, 1.0, 0.72]),
+    placeGeo(new CapsuleGeometry(0.068, 0.23, 5, 10), [0, 0.315, -0.062], [0, 0, Math.PI / 2], [1, 0.85, 0.88]),
+    placeGeo(new BoxGeometry(0.042, 0.12, 0.022), [-0.052, 0.3, 0.032], [-0.14, 0.22, -0.28]),
+    placeGeo(new BoxGeometry(0.042, 0.12, 0.022), [0.052, 0.3, 0.032], [-0.14, -0.22, 0.28]),
+  ];
+  for (const s of [-1, 1]) {
+    jacketParts.push(placeGeo(new SphereGeometry(0.052, 8, 8), [s * 0.168, 0.305, -0.035]));
+    jacketParts.push(
+      placeGeo(new CapsuleGeometry(0.044, 0.135, 5, 8), [s * 0.166, 0.265, 0.048], [1.05, s * 0.08, 0]),
+    );
+    jacketParts.push(placeGeo(new SphereGeometry(0.041, 8, 6), [s * 0.16, 0.23, 0.125]));
+    jacketParts.push(
+      placeGeo(new CapsuleGeometry(0.037, 0.13, 5, 8), [s * 0.142, 0.255, 0.205], [1.38, -s * 0.22, 0]),
+    );
+  }
+
+  // 3. Sculpted Hands Gripping Wheel Rim (Palm + Thumb + Curled Fingers -> 1 draw call)
+  const handParts: BufferGeometry[] = [];
+  for (const s of [-1, 1]) {
+    const hx = s * 0.125;
+    handParts.push(placeGeo(new BoxGeometry(0.038, 0.046, 0.048), [hx, 0.275, 0.278], [0.35, -s * 0.2, 0]));
+    handParts.push(placeGeo(new CapsuleGeometry(0.011, 0.024, 4, 6), [hx - s * 0.018, 0.295, 0.272], [0.2, 0, s * 0.5]));
+    handParts.push(placeGeo(new CapsuleGeometry(0.014, 0.03, 4, 6), [hx + s * 0.006, 0.275, 0.298], [0.4, 0, 0]));
+  }
+
+  // 4. Sculpted Anatomical Human Head (Tapered Chin, Jawline, Cheekbones, Cranium + Neck + 3D Nose + Ears -> 1 draw call!)
+  const headPts = [
+    new Vector2(0.0, 0.068),
+    new Vector2(0.062, 0.074),
+    new Vector2(0.106, 0.108),
+    new Vector2(0.124, 0.168),
+    new Vector2(0.122, 0.228),
+    new Vector2(0.102, 0.276),
+    new Vector2(0.055, 0.304),
+    new Vector2(0.0, 0.312),
+  ];
+  const headLathe = new LatheGeometry(headPts, 18);
+  const headParts: BufferGeometry[] = [
+    placeGeo(new CylinderGeometry(0.046, 0.056, 0.11, 10), [0, 0.048, -0.008]),
+    placeGeo(headLathe, [0, 0, 0], [0, 0, 0], [0.88, 1.0, 0.96]),
+    placeGeo(new CapsuleGeometry(0.013, 0.028, 4, 6), [0, 0.175, 0.116], [-0.26, 0, 0]),
+    placeGeo(new SphereGeometry(0.032, 8, 8), [-0.11, 0.182, -0.005], [0, 0, 0.12], [0.44, 0.92, 0.68]),
+    placeGeo(new SphereGeometry(0.032, 8, 8), [0.11, 0.182, -0.005], [0, 0, -0.12], [0.44, 0.92, 0.68]),
+  ];
+
+  // 5. Layered 3D Hair Volume (Crown + Forelock + Sideburns + Tapered Nape -> 1 draw call)
+  const hairParts: BufferGeometry[] = [
+    placeGeo(new SphereGeometry(0.128, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.56), [0, 0.205, -0.008], [-0.08, 0, 0], [0.91, 0.92, 0.99]),
+    placeGeo(new CapsuleGeometry(0.032, 0.095, 4, 8), [0.01, 0.278, 0.082], [0.15, 0, 1.48]),
+    placeGeo(new BoxGeometry(0.022, 0.075, 0.048), [-0.104, 0.205, 0.012], [0.1, 0, 0.08]),
+    placeGeo(new BoxGeometry(0.022, 0.075, 0.048), [0.104, 0.205, 0.012], [0.1, 0, -0.08]),
+    placeGeo(new CylinderGeometry(0.098, 0.078, 0.09, 10, 1, false, Math.PI * 0.6, Math.PI * 0.8), [0, 0.16, -0.018]),
+  ];
+
+  // 6. Curved-Brim 6-Panel Baseball Cap (Raised cleanly above eyebrows, zero crown poke-through!)
+  const capParts: BufferGeometry[] = [
+    placeGeo(
+      new SphereGeometry(0.136, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),
+      [0, 0.228, -0.004],
+      [-0.1, 0, 0],
+      [0.93, 0.92, 1.02],
+    ),
+    placeGeo(new SphereGeometry(0.014, 6, 6), [0, 0.352, -0.016]),
+    placeGeo(
+      new CylinderGeometry(0.118, 0.128, 0.02, 12, 1, false, -Math.PI * 0.42, Math.PI * 0.84),
+      [0, 0.258, 0.072],
+      [-0.05, 0, 0],
+      [0.94, 1, 1.15],
+    ),
+  ];
+
+  return {
+    legsGeo: mergeParts(legsParts),
+    jacketGeo: mergeParts(jacketParts),
+    handsGeo: mergeParts(handParts),
+    headGeo: mergeParts(headParts),
+    hairGeo: mergeParts(hairParts),
+    capGeo: mergeParts(capParts),
+  };
+}
+
 export function LiveCar() {
   const ref = useRef<Group>(null);
   const w1 = useRef<Group>(null);
@@ -386,6 +480,8 @@ export function LiveCar() {
   const seatsGeo = useMemo(() => buildInteriorSeatsGeo(), []);
   const chromeGasGeo = useMemo(() => buildChromeDetailsGeo(false), []);
   const chromeEvGeo = useMemo(() => buildChromeDetailsGeo(true), []);
+  const drvGeo = useMemo(() => buildDriverGeometries(), []);
+  const faceArt = useMemo(() => paint(() => undefined, 128, 128), []);
 
   const [look, setLook] = useState({
     id: -1,
@@ -488,11 +584,22 @@ export function LiveCar() {
       cap.visible = c.capped || c.job !== "cap";
       (cap.material as MeshStandardMaterial).color.set(c.capped ? "#dc2626" : "#94a3b8");
     }
+
+    const fk = `${c.skin}|${c.face}|${c.mad}|${c.asleep}|${c.caught}|${c.devil}`;
+    if (faceArt.key !== fk) {
+      faceArt.key = fk;
+      drawDriverFace(faceArt.ctx, 128, 128, {
+        skin: c.skin,
+        face: c.face,
+        mad: c.mad,
+        asleep: c.asleep,
+        caught: c.caught,
+        devil: c.devil,
+      });
+      faceArt.tex.needsUpdate = true;
+    }
   });
 
-  const wideEyes = look.face === "thief";
-  const angryBrows = look.face === "bully" || look.mad || look.devil;
-  const bigGrin = look.face === "worst";
   const style: CarStyle = look.devil ? "devil" : look.job === "charge" ? "ev" : "sedan";
   const bodyGeo = style === "devil" ? devilBody : style === "ev" ? evBody : sedanBody;
   const chromeGeo = style === "ev" ? chromeEvGeo : chromeGasGeo;
@@ -512,14 +619,14 @@ export function LiveCar() {
         <meshBasicMaterial color="#ef4444" />
       </mesh>
 
-      {/* 1) Merged Metallic Clearcoat Exterior Bodywork (Hollow Cabin!) */}
+      {/* 1) Merged Glossy Clearcoat Exterior Bodywork (Hollow Cabin!) */}
       <mesh geometry={bodyGeo} castShadow receiveShadow>
-        <meshStandardMaterial color={look.color} roughness={0.2} metalness={0.56} />
+        <meshStandardMaterial color={look.color} roughness={0.28} metalness={0.16} />
       </mesh>
 
       {/* 2) Merged Dark Chassis, Panel Seams, Hollow Cabin Floor, Inner Doors, Console & Steering */}
       <mesh geometry={darkGeo} receiveShadow>
-        <meshStandardMaterial color="#161920" roughness={0.72} metalness={0.18} />
+        <meshStandardMaterial color="#161920" roughness={0.72} metalness={0.12} />
       </mesh>
 
       {/* 3) Merged Contoured Bolstered Bucket Seats & Rear Bench */}
@@ -529,7 +636,7 @@ export function LiveCar() {
 
       {/* 4) Merged Bright Chrome Handles, Shifter, Exhausts & Grille Trim */}
       <mesh geometry={chromeGeo}>
-        <meshStandardMaterial color="#e2e8f0" roughness={0.16} metalness={0.92} />
+        <meshStandardMaterial color="#eef2f6" roughness={0.18} metalness={0.38} />
       </mesh>
 
       {/* Illuminated Dashboard Gauges, AC Vents & GPS Navigation Screen */}
@@ -734,140 +841,56 @@ export function LiveCar() {
       </mesh>
 
       {/* ============================================================
-          FULL SEATED DRIVER INSIDE HOLLOW CABIN (Legs, Seatbelt, Arms, Head)
+          SCULPTED ANATOMICAL DRIVER (Broad Shoulders, Seamless Arms, Jawline Head)
          ============================================================ */}
       <group position={[0.33, 0.44, -0.04]}>
-        {/* Seated Denim Thighs & Calves Reaching Toward Footwell Pedals */}
-        {[-0.075, 0.075].map((lx) => (
-          <group key={`leg-${lx}`} position={[lx, 0.02, 0.14]}>
-            <mesh rotation={[Math.PI / 2 - 0.12, 0, 0]}>
-              <capsuleGeometry args={[0.056, 0.22, 6, 8]} />
-              <meshStandardMaterial color="#1e293b" roughness={0.88} />
-            </mesh>
-            <mesh position={[0, -0.06, 0.2]} rotation={[0.58, 0, 0]}>
-              <capsuleGeometry args={[0.046, 0.18, 6, 8]} />
-              <meshStandardMaterial color="#1e293b" roughness={0.88} />
-            </mesh>
-          </group>
-        ))}
-
-        {/* Jacket Torso, Flush Collar & Diagonal Shoulder Seatbelt Strap */}
-        <mesh position={[0, 0.22, -0.05]} rotation={[-0.14, 0, 0]} scale={[1.12, 1.05, 0.78]}>
-          <capsuleGeometry args={[0.14, 0.22, 8, 12]} />
-          <meshStandardMaterial color={look.shirt} roughness={0.82} />
+        {/* Merged Seated Denim Legs */}
+        <mesh geometry={drvGeo.legsGeo}>
+          <meshStandardMaterial color="#1e293b" roughness={0.88} />
         </mesh>
-        <mesh position={[0, 0.34, -0.015]}>
-          <cylinderGeometry args={[0.058, 0.068, 0.045, 10]} />
-          <meshStandardMaterial color="#e2e8f0" roughness={0.85} />
+        {/* Merged Broad-Shouldered Jacket + Lapels + Seamless Jointed Sleeves */}
+        <mesh geometry={drvGeo.jacketGeo}>
+          <meshStandardMaterial color={look.shirt} roughness={0.8} />
         </mesh>
-        {/* Diagonal 3-Point Seatbelt Across Chest */}
-        <mesh position={[0.01, 0.24, 0.045]} rotation={[-0.14, 0, 0.58]}>
+        {/* Inner Crew-Neck Undershirt & 3-Point Diagonal Seatbelt */}
+        <mesh position={[0, 0.33, -0.015]}>
+          <cylinderGeometry args={[0.056, 0.068, 0.05, 10]} />
+          <meshStandardMaterial color="#f1f5f9" roughness={0.85} />
+        </mesh>
+        <mesh position={[0.01, 0.235, 0.048]} rotation={[-0.14, 0, 0.58]}>
           <boxGeometry args={[0.038, 0.32, 0.01]} />
           <meshStandardMaterial color="#111827" roughness={0.6} />
         </mesh>
+        {/* Merged Sculpted Hands Wrapping Steering Wheel */}
+        <mesh geometry={drvGeo.handsGeo}>
+          <meshStandardMaterial color={look.skin} roughness={0.68} />
+        </mesh>
 
-        {/* Jointed Upper Arms, Forearms & Hands Gripping Steering Wheel Rim */}
-        {[-0.155, 0.155].map((ax) => (
-          <group key={`arm-${ax}`} position={[ax, 0.31, -0.02]}>
-            <mesh position={[0, -0.04, 0.1]} rotation={[0.98, ax > 0 ? 0.14 : -0.14, 0]}>
-              <capsuleGeometry args={[0.042, 0.16, 6, 8]} />
-              <meshStandardMaterial color={look.shirt} roughness={0.82} />
-            </mesh>
-            <mesh position={[ax > 0 ? -0.025 : 0.025, -0.02, 0.23]} rotation={[1.45, ax > 0 ? 0.22 : -0.22, 0]}>
-              <capsuleGeometry args={[0.036, 0.14, 6, 8]} />
-              <meshStandardMaterial color={look.shirt} roughness={0.82} />
-            </mesh>
-            <mesh position={[ax > 0 ? -0.035 : 0.035, -0.01, 0.3]}>
-              <sphereGeometry args={[0.035, 8, 8]} />
-              <meshStandardMaterial color={look.skin} roughness={0.7} />
-            </mesh>
-          </group>
-        ))}
-
-        {/* Articulated Neck & Sculpted Head (Clean Headroom Below y=1.36 Roof!) */}
-        <group ref={headRef} position={[0, 0.4, -0.04]}>
-          <mesh position={[0, 0.045, 0]}>
-            <cylinderGeometry args={[0.046, 0.055, 0.1, 10]} />
-            <meshStandardMaterial color={look.skin} roughness={0.72} />
-          </mesh>
-          <mesh position={[0, 0.185, 0]} scale={[0.84, 1.04, 0.92]}>
-            <sphereGeometry args={[0.138, 16, 14]} />
-            <meshStandardMaterial color={look.skin} roughness={0.68} />
-          </mesh>
-          {/* Ears */}
-          <mesh position={[-0.118, 0.185, 0]} scale={[0.42, 0.9, 0.68]}>
-            <sphereGeometry args={[0.036, 8, 8]} />
-            <meshStandardMaterial color={look.skin} roughness={0.7} />
-          </mesh>
-          <mesh position={[0.118, 0.185, 0]} scale={[0.42, 0.9, 0.68]}>
-            <sphereGeometry args={[0.036, 8, 8]} />
-            <meshStandardMaterial color={look.skin} roughness={0.7} />
-          </mesh>
-          {/* Hair */}
-          <group ref={hairRef} position={[0, 0.235, -0.01]}>
-            <mesh scale={[0.88, 0.74, 0.96]}>
-              <sphereGeometry args={[0.142, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.58]} />
-              <meshStandardMaterial color="#1f1c1a" roughness={0.9} />
-            </mesh>
-          </group>
-          {/* Nose, Eyes, Eyebrows & Mouth */}
-          <mesh position={[0, 0.175, 0.125]} rotation={[-0.22, 0, 0]}>
-            <capsuleGeometry args={[0.014, 0.03, 4, 6]} />
+        {/* Articulated Sculpted Head + Dynamic Curved Facial Expression */}
+        <group ref={headRef} position={[0, 0.385, -0.04]}>
+          <mesh geometry={drvGeo.headGeo}>
             <meshStandardMaterial color={look.skin} roughness={0.66} />
           </mesh>
-          <mesh position={[-0.044, 0.205, 0.11]} scale={wideEyes ? 1.35 : [1.05, 0.82, 0.6]}>
-            <sphereGeometry args={[0.019, 8, 8]} />
-            <meshBasicMaterial color="#f8fafc" />
+          {/* Curved Facial Expression Surface Proud of Sculpted Head (Zero Z-Occlusion!) */}
+          <mesh position={[0, 0.182, 0.012]} scale={[0.91, 1.0, 1.02]}>
+            <cylinderGeometry args={[0.126, 0.112, 0.155, 14, 1, true, -0.68, 1.36]} />
+            <meshStandardMaterial map={faceArt.tex} roughness={0.66} />
           </mesh>
-          <mesh position={[0.044, 0.205, 0.11]} scale={wideEyes ? 1.35 : [1.05, 0.82, 0.6]}>
-            <sphereGeometry args={[0.019, 8, 8]} />
-            <meshBasicMaterial color="#f8fafc" />
+          {/* Layered 3D Hair with Forelock, Sideburns & Nape */}
+          <mesh ref={hairRef} geometry={drvGeo.hairGeo}>
+            <meshStandardMaterial color="#1f1b18" roughness={0.88} />
           </mesh>
-          <mesh position={[-0.044, 0.205, 0.122]}>
-            <sphereGeometry args={[0.009, 8, 8]} />
-            <meshBasicMaterial color="#09090b" />
+          {/* Curved-Brim 6-Panel Baseball Cap */}
+          <mesh ref={hatRef} geometry={drvGeo.capGeo} visible={Boolean(look.hat)}>
+            <meshStandardMaterial color={look.hat ?? "#2d9d5c"} roughness={0.76} />
           </mesh>
-          <mesh position={[0.044, 0.205, 0.122]}>
-            <sphereGeometry args={[0.009, 8, 8]} />
-            <meshBasicMaterial color="#09090b" />
-          </mesh>
-          <mesh position={[-0.044, 0.236, 0.118]} rotation={[0, 0, Math.PI / 2 + (angryBrows ? -0.32 : 0)]}>
-            <capsuleGeometry args={[0.007, 0.034, 4, 6]} />
-            <meshBasicMaterial color="#1c1917" />
-          </mesh>
-          <mesh position={[0.044, 0.236, 0.118]} rotation={[0, 0, Math.PI / 2 + (angryBrows ? 0.32 : 0)]}>
-            <capsuleGeometry args={[0.007, 0.034, 4, 6]} />
-            <meshBasicMaterial color="#1c1917" />
-          </mesh>
-          {bigGrin ? (
-            <mesh position={[0, 0.128, 0.118]} rotation={[0.1, 0, Math.PI / 2]}>
-              <capsuleGeometry args={[0.014, 0.055, 4, 8]} />
-              <meshBasicMaterial color="#ffffff" />
-            </mesh>
-          ) : (
-            <mesh position={[0, 0.13, 0.118]} rotation={[0, 0, Math.PI / 2]}>
-              <capsuleGeometry args={[0.005, 0.03, 4, 6]} />
-              <meshBasicMaterial color="#7c3f28" />
-            </mesh>
-          )}
-          {/* Baseball Cap */}
-          <group ref={hatRef} position={[0, 0.27, 0]} visible={Boolean(look.hat)}>
-            <mesh scale={[0.9, 0.64, 0.96]}>
-              <sphereGeometry args={[0.142, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
-              <meshStandardMaterial color={look.hat ?? "#2d9d5c"} roughness={0.78} />
-            </mesh>
-            <mesh position={[0, 0.005, 0.108]} rotation={[0.12, 0, 0]} scale={[1.1, 0.2, 0.9]}>
-              <cylinderGeometry args={[0.118, 0.128, 0.042, 12, 1, false, -Math.PI * 0.45, Math.PI * 0.9]} />
-              <meshStandardMaterial color={look.hat ?? "#2d9d5c"} roughness={0.78} />
-            </mesh>
-          </group>
           {/* Devil Horns */}
           <group ref={hornsRef} visible={look.devil}>
-            <mesh position={[-0.062, 0.32, 0]} rotation={[0, 0, 0.42]}>
+            <mesh position={[-0.062, 0.31, 0]} rotation={[0, 0, 0.42]}>
               <coneGeometry args={[0.026, 0.15, 8]} />
               <meshStandardMaterial color="#dc2626" roughness={0.35} />
             </mesh>
-            <mesh position={[0.062, 0.32, 0]} rotation={[0, 0, -0.42]}>
+            <mesh position={[0.062, 0.31, 0]} rotation={[0, 0, -0.42]}>
               <coneGeometry args={[0.026, 0.15, 8]} />
               <meshStandardMaterial color="#dc2626" roughness={0.35} />
             </mesh>
@@ -896,20 +919,19 @@ function Wheel({
   const dir = flip ? 1 : -1;
   return (
     <group ref={refObj} position={at}>
-      <mesh geometry={tireGeo} castShadow>
+      <mesh geometry={tireGeo}>
         <meshStandardMaterial map={treadTex} roughness={0.86} metalness={0.05} />
       </mesh>
-      {/* Dark Inner Wheel Barrel & Gunmetal Brake Rotor for Crisp Spoke Contrast */}
       <mesh position={[dir * 0.018, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.182, 0.182, 0.04, 16]} />
+        <cylinderGeometry args={[0.182, 0.182, 0.04, 14]} />
         <meshStandardMaterial color="#14171f" roughness={0.75} metalness={0.35} />
       </mesh>
       <mesh geometry={rimGeo} scale={[dir, 1, 1]}>
-        <meshStandardMaterial color="#e2e8f0" roughness={0.16} metalness={0.9} />
+        <meshStandardMaterial color="#edf2f7" roughness={0.18} metalness={0.36} />
       </mesh>
       <mesh position={[dir * 0.044, 0.095, 0.065]}>
         <boxGeometry args={[0.032, 0.075, 0.05]} />
-        <meshStandardMaterial color="#dc2626" roughness={0.35} metalness={0.35} />
+        <meshStandardMaterial color="#dc2626" roughness={0.35} metalness={0.25} />
       </mesh>
     </group>
   );
