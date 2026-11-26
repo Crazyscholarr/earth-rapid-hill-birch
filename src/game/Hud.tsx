@@ -10,9 +10,11 @@ import {
   requestLock,
   resumeGame,
   setGrade,
+  sim,
   startGame,
   subscribe,
   togglePoster,
+  toggleQuality,
   uiGo,
   uiSkull,
   uiUse,
@@ -93,6 +95,103 @@ function smartTouchAction(aimKind: string, hold: Hold): { label: string; tone: "
   return { label: "Dùng", tone: "fuel" };
 }
 
+const RING_CIRC = 2 * Math.PI * 18;
+
+/** Direct-DOM crosshair progress ring: 0 React re-renders while pumping fuel or washing! */
+function CrosshairProgressRing() {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const circleRef = useRef<SVGCircleElement>(null);
+  useEffect(() => {
+    let raf = 0;
+    let lastProg = -1;
+    const loop = () => {
+      const p = sim.aimProgress;
+      if (Math.abs(p - lastProg) > 0.002) {
+        lastProg = p;
+        const svg = svgRef.current;
+        const cir = circleRef.current;
+        if (svg && cir) {
+          if (p > 0.002) {
+            svg.style.display = "block";
+            cir.style.strokeDashoffset = String(RING_CIRC * (1 - p));
+          } else {
+            svg.style.display = "none";
+          }
+        }
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <svg ref={svgRef} style={{ display: "none" }} className="h-11 w-11 -rotate-90" viewBox="0 0 44 44">
+      <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="3.5" />
+      <circle
+        ref={circleRef}
+        cx="22"
+        cy="22"
+        r="18"
+        fill="none"
+        stroke="#f0b429"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        strokeDasharray={RING_CIRC}
+        strokeDashoffset={RING_CIRC}
+      />
+    </svg>
+  );
+}
+
+/** Direct-DOM patience bar: updates scaleX smoothly with 0 React re-renders! */
+function LivePatienceBar() {
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let raf = 0;
+    let tickCount = 0;
+    const loop = () => {
+      tickCount = (tickCount + 1) & 3;
+      if (tickCount === 0 && barRef.current) {
+        const c = sim.car;
+        const p = c && c.phase === "wait" ? Math.max(0, Math.min(1, c.patience / c.maxPatience)) : 0;
+        barRef.current.style.transform = `scaleX(${p.toFixed(3)})`;
+        barRef.current.style.backgroundColor = p > 0.45 ? "#1f8a4c" : p > 0.22 ? "#f0b429" : "#d7263d";
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+      <div
+        ref={barRef}
+        className="h-full w-full origin-left"
+        style={{ transform: "scaleX(1)", backgroundColor: "#1f8a4c" }}
+      />
+    </div>
+  );
+}
+
+/** Lightweight FPS readout updated via setInterval every 700ms without re-rendering HUD! */
+function LiveFpsText({ quality }: { quality: "fast" | "high" }) {
+  const spanRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const update = () => {
+      if (spanRef.current) {
+        spanRef.current.textContent = `${sim.fps} FPS · ${quality === "fast" ? "Mượt" : "Cao"}`;
+      }
+    };
+    update();
+    const id = window.setInterval(update, 700);
+    return () => window.clearInterval(id);
+  }, [quality]);
+
+  return <span ref={spanRef}>{`${sim.fps} FPS · ${quality === "fast" ? "Mượt" : "Cao"}`}</span>;
+}
+
 export function Hud() {
   const snap = useSyncExternalStore(subscribe, getSnap, getSnap);
   const [coarse, setCoarse] = useState(false);
@@ -119,21 +218,21 @@ export function Hud() {
                 <span>{snap.night ? "Đêm" : "Ngày"}</span>
                 {snap.skull ? (
                   <span className="ml-auto rounded bg-danger px-1.5 py-0.5 text-[9px] text-white">KHÓA</span>
-                ) : null}
+                ) : (
+                  <button
+                    data-ui
+                    onClick={toggleQuality}
+                    title="Đổi chế độ đồ họa Mượt / Cao"
+                    className="pointer-events-auto ml-auto rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold tracking-normal text-cream-dim hover:bg-white/20"
+                  >
+                    <LiveFpsText quality={snap.quality} />
+                  </button>
+                )}
               </div>
               <p className="mt-0.5 truncate font-semibold text-cream">{snap.objective}</p>
 
               {/* On mobile, integrate patience bar right inside this single card to save vertical space! */}
-              {coarse && car && !car.caught && !car.served ? (
-                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className={`h-full w-full origin-left transition-transform duration-150 will-change-transform ${
-                      car.patience > 0.45 ? "bg-go" : car.patience > 0.22 ? "bg-gold" : "bg-danger"
-                    }`}
-                    style={{ transform: `scaleX(${Math.max(0, Math.min(1, car.patience)).toFixed(3)})` }}
-                  />
-                </div>
-              ) : null}
+              {coarse && car && !car.caught && !car.served ? <LivePatienceBar /> : null}
             </div>
 
             {/* Separate customer detail card only on roomy desktop screens */}
@@ -145,16 +244,7 @@ export function Hud() {
                     {car.caught ? "Đã bắt" : car.asleep ? "Đang ngủ Zzz" : car.served ? "Đã xong" : jobLabel(car.job, car.grade)}
                   </span>
                 </div>
-                {!car.caught && !car.served ? (
-                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                    <div
-                      className={`h-full w-full origin-left transition-transform duration-150 will-change-transform ${
-                        car.patience > 0.45 ? "bg-go" : car.patience > 0.22 ? "bg-gold" : "bg-danger"
-                      }`}
-                      style={{ transform: `scaleX(${Math.max(0, Math.min(1, car.patience)).toFixed(3)})` }}
-                    />
-                  </div>
-                ) : null}
+                {!car.caught && !car.served ? <LivePatienceBar /> : null}
                 {car.dirty && car.job !== "wash" && !car.caught ? (
                   <p className="mt-1 text-[11px] text-cream-dim/90">Mẹo: Xe bẩn — rửa thêm để được boa +$22</p>
                 ) : null}
@@ -224,26 +314,11 @@ export function Hud() {
             ) : null}
           </div>
 
-          {/* Center Crosshair + Progress Ring */}
+          {/* Center Crosshair + Zero-Rerender Progress Ring */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            {snap.aimProgress > 0 ? (
-              <svg className="h-11 w-11 -rotate-90" viewBox="0 0 44 44">
-                <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="3.5" />
-                <circle
-                  cx="22"
-                  cy="22"
-                  r="18"
-                  fill="none"
-                  stroke="#f0b429"
-                  strokeWidth="3.5"
-                  strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 18}
-                  strokeDashoffset={2 * Math.PI * 18 * (1 - snap.aimProgress)}
-                />
-              </svg>
-            ) : null}
+            <CrosshairProgressRing />
             <div
-              className={`crosshair absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-transform duration-100 ${
+              className={`crosshair absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${
                 snap.aimKind ? "hot" : ""
               }`}
             />
@@ -270,7 +345,7 @@ export function Hud() {
                 return (
                   <button
                     key={g.id}
-                    className={`flex items-center gap-1 rounded-xl font-semibold transition-transform active:scale-95 ${
+                    className={`flex items-center gap-1 rounded-xl font-semibold active:scale-95 ${
                       coarse ? "min-h-9 px-2.5 py-1.5 text-xs" : "btn btn-fuel text-xs sm:text-sm"
                     } ${active ? "bg-canopy text-white ring-2 ring-gold" : "bg-ink-soft/95 text-cream"}`}
                     onClick={() => setGrade(g.id as Grade)}
@@ -284,7 +359,7 @@ export function Hud() {
             </div>
           ) : null}
 
-          {/* Prompt Pill (Compact on mobile, hidden when idle on mobile to keep screen airy) */}
+          {/* Prompt Pill */}
           {snap.prompt && (!coarse || snap.aimKind) ? (
             <div
               className={`absolute left-1/2 max-w-[62vw] -translate-x-1/2 truncate rounded-full border border-white/18 bg-panel/95 px-3.5 py-1.5 text-center font-semibold shadow-md ${
@@ -329,7 +404,7 @@ export function Hud() {
       ) : null}
 
       {snap.phase === "title" ? <Title /> : null}
-      {snap.phase === "pause" ? <Pause /> : null}
+      {snap.phase === "pause" ? <Pause quality={snap.quality} /> : null}
       {snap.phase === "shop" ? <Shop snap={snap} /> : null}
     </div>
   );
@@ -358,7 +433,7 @@ function Title() {
   );
 }
 
-function Pause() {
+function Pause({ quality }: { quality: "fast" | "high" }) {
   return (
     <div className="pointer-events-auto absolute inset-0 grid place-items-center bg-ink/75 p-4">
       <div className="panel w-full max-w-sm p-5 text-center sm:p-6">
@@ -372,6 +447,9 @@ function Pause() {
           }}
         >
           Tiếp tục
+        </button>
+        <button className="btn btn-fuel mt-2 w-full" onClick={toggleQuality}>
+          Đồ họa: {quality === "fast" ? "Siêu Mượt (Tối ưu FPS)" : "Độ phân giải Cao"}
         </button>
         <button className="btn btn-fuel mt-2 w-full" onClick={openShop}>
           Cửa hàng nâng cấp
@@ -433,7 +511,6 @@ function Touch({
   return (
     <div className="pointer-events-none absolute inset-0">
       <Stick />
-      {/* Single Spacious Right Thumb Action Button (+ GO dispatch pill only when car is ready!) */}
       <div className="pointer-events-auto absolute right-4 bottom-4 flex flex-col items-end gap-2.5" data-ui>
         {canDispatch ? (
           <button
@@ -460,7 +537,7 @@ function HoldButton({ label, tone }: { label: string; tone: "gold" | "go" | "fue
         : "border-white/25 bg-ink-soft/95 text-cream";
   return (
     <button
-      className={`flex h-16 min-w-[5.25rem] items-center justify-center rounded-2xl border-2 px-4 text-sm font-bold shadow-lg transition-transform active:scale-95 ${toneCls}`}
+      className={`flex h-16 min-w-[5.25rem] items-center justify-center rounded-2xl border-2 px-4 text-sm font-bold shadow-lg active:scale-95 ${toneCls}`}
       data-ui
       onPointerDown={(e) => {
         e.preventDefault();
@@ -478,16 +555,23 @@ function HoldButton({ label, tone }: { label: string; tone: "gold" | "go" | "fue
 function Stick() {
   const id = useRef<number | null>(null);
   const origin = useRef({ x: 0, y: 0 });
-  const [knob, setKnob] = useState({ x: 0, y: 0 });
+  const knobRef = useRef<HTMLDivElement>(null);
   const setAxis = (x: number, y: number) => {
     const max = 34;
     const m = Math.hypot(x, y) || 1;
     const k = Math.min(max, m);
     const nx = (x / m) * k;
     const ny = (y / m) * k;
-    setKnob({ x: nx, y: ny });
+    if (knobRef.current) {
+      knobRef.current.style.transform = `translate(calc(-50% + ${nx.toFixed(1)}px), calc(-50% + ${ny.toFixed(1)}px))`;
+    }
     input.touchX = nx / max;
     input.touchY = ny / max;
+  };
+  const resetKnob = () => {
+    if (knobRef.current) knobRef.current.style.transform = "translate(-50%, -50%)";
+    input.touchX = 0;
+    input.touchY = 0;
   };
   return (
     <div
@@ -505,21 +589,18 @@ function Stick() {
       onPointerUp={(e) => {
         if (e.pointerId !== id.current) return;
         id.current = null;
-        setKnob({ x: 0, y: 0 });
-        input.touchX = 0;
-        input.touchY = 0;
+        resetKnob();
       }}
       onPointerCancel={(e) => {
         if (e.pointerId !== id.current) return;
         id.current = null;
-        setKnob({ x: 0, y: 0 });
-        input.touchX = 0;
-        input.touchY = 0;
+        resetKnob();
       }}
     >
       <div
+        ref={knobRef}
         className="absolute top-1/2 left-1/2 h-10 w-10 rounded-full bg-cream/90 shadow-md"
-        style={{ transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))` }}
+        style={{ transform: "translate(-50%, -50%)" }}
       />
     </div>
   );

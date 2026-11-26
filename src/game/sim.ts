@@ -1,8 +1,9 @@
-import { unlockAudio, resumeAudio, setVolume, sfx } from "@/game/audio";
+import { isAudioRunning, unlockAudio, resumeAudio, setVolume, sfx } from "@/game/audio";
 import { CAR_COLORS, GRADES, NAMES, SHOP, TIPS, WARRANTS, type FaceId, type Grade, type Job } from "@/game/content";
 import { input, isCoarse, pollPad } from "@/game/input";
 
 export type Phase = "title" | "play" | "pause" | "shop";
+export type Quality = "fast" | "high";
 export type Hold = "none" | "nozzle" | "sponge" | "burger" | "cap" | "taser" | "cash" | "mirror" | "charger" | "hat" | "cheese";
 
 export type Car = {
@@ -97,6 +98,9 @@ export const sim = {
   aimPos: { x: 0, y: 0, z: 0 },
   aimProgress: 0,
   usePulse: 0,
+  quality: "fast" as Quality,
+  fps: 60,
+  softwareGpu: false,
 };
 
 const BOXES = [
@@ -142,9 +146,8 @@ function emit() {
 }
 function snapKey() {
   const c = sim.car;
-  const pBucket = c && c.phase === "wait" ? Math.round((c.patience / c.maxPatience) * 20) : -1;
-  const progBucket = Math.round(sim.aimProgress * 40);
-  return `${sim.phase}|${sim.money}|${sim.stars.toFixed(1)}|${sim.day}|${sim.night > 0.55}|${sim.objective}|${sim.prompt}|${sim.aimKind}|${progBucket}|${sim.cashAmt}|${sim.toastT > 0 ? sim.toast : ""}|${sim.hold}|${sim.grade}|${sim.posterUp}|${sim.skull}|${sim.burgers}|${sim.caps}|${pBucket}|${c?.caught}|${c?.asleep}|${c?.served}|${c?.dirty}`;
+  const dirtyFlag = Boolean(c && c.dirty > 0.2 && c.wash < 0.95);
+  return `${sim.phase}|${sim.money}|${sim.stars.toFixed(1)}|${sim.day}|${sim.night > 0.55}|${sim.objective}|${sim.prompt}|${sim.aimKind}|${sim.cashAmt}|${sim.toastT > 0 ? sim.toast : ""}|${sim.hold}|${sim.grade}|${sim.posterUp}|${sim.skull}|${sim.burgers}|${sim.caps}|${sim.quality}|${c?.id ?? -1}|${c?.phase ?? ""}|${c?.caught}|${c?.asleep}|${c?.served}|${dirtyFlag}`;
 }
 function emitIfChanged() {
   const key = snapKey();
@@ -234,49 +237,98 @@ function aimBias(kind: Kind) {
   return 0;
 }
 
-function consider(list: { kind: Kind; p: { x: number; y: number; z: number }; max: number; id?: number }[]) {
-  const e = eye();
-  const f = forward();
-  let best: { kind: Kind; id?: number; score: number; p: { x: number; y: number; z: number } } | null = null;
-  for (const t of list) {
-    const dx = t.p.x - e.x;
-    const dy = t.p.y - e.y;
-    const dz = t.p.z - e.z;
-    const dist = Math.hypot(dx, dy, dz);
-    if (dist > t.max || dist < 0.001) continue;
-    const dot = (dx * f.x + dy * f.y + dz * f.z) / dist;
-    if (dot < 0.68) continue;
-    const score = dist + (1 - dot) * 1.5 + aimBias(t.kind);
-    if (!best || score < best.score) best = { kind: t.kind, id: t.id, score, p: t.p };
+// Zero-allocation per-frame aim evaluation (avoids allocating 20 objects every frame!)
+let eyeX = 0;
+let eyeY = 1.56;
+let eyeZ = 0;
+let fwdX = 0;
+let fwdY = 0;
+let fwdZ = -1;
+let bestKind: Kind | null = null;
+let bestId: number | undefined;
+let bestScore = Infinity;
+let bestX = 0;
+let bestY = 0;
+let bestZ = 0;
+const aimHolder: { kind: Kind; id?: number } = { kind: "nozzle" };
+
+function testSpot(kind: Kind, px: number, py: number, pz: number, max: number, id?: number) {
+  const dx = px - eyeX;
+  const dy = py - eyeY;
+  const dz = pz - eyeZ;
+  const dist = Math.hypot(dx, dy, dz);
+  if (dist > max || dist < 0.001) return;
+  const dot = (dx * fwdX + dy * fwdY + dz * fwdZ) / dist;
+  if (dot < 0.68) return;
+  const score = dist + (1 - dot) * 1.5 + aimBias(kind);
+  if (score < bestScore) {
+    bestScore = score;
+    bestKind = kind;
+    bestId = id;
+    bestX = px;
+    bestY = py;
+    bestZ = pz;
   }
-  aim = best ? { kind: best.kind, id: best.id } : null;
-  sim.aimKind = best ? best.kind : "";
-  if (best) sim.aimPos = { x: best.p.x, y: best.p.y, z: best.p.z };
+}
+
+function testCarSpot(c: Car, co: number, si: number, kind: Kind, lx: number, ly: number, lz: number, max: number) {
+  testSpot(kind, c.x + lx * co + lz * si, ly, c.z - lx * si + lz * co, max);
 }
 
 function refreshAim() {
-  const list: { kind: Kind; p: { x: number; y: number; z: number }; max: number; id?: number }[] = [];
-  if (sim.hold !== "nozzle") list.push({ kind: "nozzle", p: SPOT.nozzle, max: SPOT.nozzle.max });
-  if (sim.hold !== "charger") list.push({ kind: "charger", p: SPOT.charger, max: SPOT.charger.max });
-  if (sim.hold !== "sponge") list.push({ kind: "sponge", p: SPOT.sponge, max: SPOT.sponge.max });
-  if (sim.burgers > 0 && sim.hold !== "burger") list.push({ kind: "burger", p: SPOT.burger, max: SPOT.burger.max });
-  if (sim.caps > 0 && sim.hold !== "cap") list.push({ kind: "cap", p: SPOT.cap, max: SPOT.cap.max });
-  if (sim.hold !== "taser") list.push({ kind: "taser", p: SPOT.taser, max: SPOT.taser.max });
-  list.push({ kind: "gold", p: SPOT.gold, max: SPOT.gold.max });
-  list.push({ kind: "skull", p: SPOT.skull, max: SPOT.skull.max });
-  list.push({ kind: "go", p: SPOT.go, max: SPOT.go.max });
-  list.push({ kind: "shred", p: SPOT.shred, max: SPOT.shred.max });
-  if (sim.mirrorDrop) list.push({ kind: "mdrop", p: { x: sim.mirrorDrop.x, y: 0.4, z: sim.mirrorDrop.z }, max: 2.6 });
-  for (const b of sim.bills) list.push({ kind: "bill", id: b.id, p: { x: b.x, y: b.y + 0.1, z: b.z }, max: 2.8 });
+  eyeX = sim.player.x;
+  eyeY = 1.56;
+  eyeZ = sim.player.z;
+  const cy = Math.cos(sim.player.pitch);
+  fwdX = -Math.sin(sim.player.yaw) * cy;
+  fwdY = Math.sin(sim.player.pitch);
+  fwdZ = -Math.cos(sim.player.yaw) * cy;
+
+  bestKind = null;
+  bestId = undefined;
+  bestScore = Infinity;
+
+  if (sim.hold !== "nozzle") testSpot("nozzle", SPOT.nozzle.x, SPOT.nozzle.y, SPOT.nozzle.z, SPOT.nozzle.max);
+  if (sim.hold !== "charger") testSpot("charger", SPOT.charger.x, SPOT.charger.y, SPOT.charger.z, SPOT.charger.max);
+  if (sim.hold !== "sponge") testSpot("sponge", SPOT.sponge.x, SPOT.sponge.y, SPOT.sponge.z, SPOT.sponge.max);
+  if (sim.burgers > 0 && sim.hold !== "burger") testSpot("burger", SPOT.burger.x, SPOT.burger.y, SPOT.burger.z, SPOT.burger.max);
+  if (sim.caps > 0 && sim.hold !== "cap") testSpot("cap", SPOT.cap.x, SPOT.cap.y, SPOT.cap.z, SPOT.cap.max);
+  if (sim.hold !== "taser") testSpot("taser", SPOT.taser.x, SPOT.taser.y, SPOT.taser.z, SPOT.taser.max);
+  testSpot("gold", SPOT.gold.x, SPOT.gold.y, SPOT.gold.z, SPOT.gold.max);
+  testSpot("skull", SPOT.skull.x, SPOT.skull.y, SPOT.skull.z, SPOT.skull.max);
+  testSpot("go", SPOT.go.x, SPOT.go.y, SPOT.go.z, SPOT.go.max);
+  testSpot("shred", SPOT.shred.x, SPOT.shred.y, SPOT.shred.z, SPOT.shred.max);
+  if (sim.mirrorDrop) testSpot("mdrop", sim.mirrorDrop.x, 0.4, sim.mirrorDrop.z, 2.6);
+  for (let i = 0; i < sim.bills.length; i++) {
+    const b = sim.bills[i]!;
+    testSpot("bill", b.x, b.y + 0.1, b.z, 2.8, b.id);
+  }
   const c = sim.car;
   if (c && c.phase === "wait") {
-    list.push({ kind: "window", p: carPoint(c, 0.78, 1.0, 0.14), max: 3.4 });
-    list.push({ kind: "fuel", p: carPoint(c, 0.82, 0.68, -1.0), max: 3.7 });
-    list.push({ kind: "body", p: carPoint(c, 0.82, 0.78, 0.0), max: 3.5 });
-    if (c.mirror && sim.hold === "none") list.push({ kind: "mirror", p: carPoint(c, 0.86, 0.84, 0.52), max: 3.1 });
-    if (c.loose && sim.hold === "none") list.push({ kind: "loot", p: carPoint(c, -0.33, 0.52, 0.04), max: 3.1 });
+    const th = c.yaw + Math.PI;
+    const co = Math.cos(th);
+    const si = Math.sin(th);
+    testCarSpot(c, co, si, "window", 0.78, 1.0, 0.14, 3.4);
+    testCarSpot(c, co, si, "fuel", 0.82, 0.68, -1.0, 3.7);
+    testCarSpot(c, co, si, "body", 0.82, 0.78, 0.0, 3.5);
+    if (c.mirror && sim.hold === "none") testCarSpot(c, co, si, "mirror", 0.86, 0.84, 0.52, 3.1);
+    if (c.loose && sim.hold === "none") testCarSpot(c, co, si, "loot", -0.33, 0.52, 0.04, 3.1);
   }
-  consider(list);
+
+  if (bestKind) {
+    aimHolder.kind = bestKind;
+    aimHolder.id = bestId;
+    aim = aimHolder;
+    sim.aimKind = bestKind;
+    sim.aimPos.x = bestX;
+    sim.aimPos.y = bestY;
+    sim.aimPos.z = bestZ;
+  } else {
+    aim = null;
+    sim.aimKind = "";
+  }
+  void eye;
+  void forward;
   sim.prompt = promptFor(aim);
   sim.aimProgress = 0;
   if (c && c.phase === "wait" && aim) {
@@ -1245,6 +1297,13 @@ export function setGrade(g: Grade) {
   emit();
 }
 
+export function toggleQuality() {
+  sim.quality = sim.quality === "fast" ? "high" : "fast";
+  sfx.ui();
+  save();
+  emit();
+}
+
 export function togglePoster() {
   sim.posterUp = !sim.posterUp;
   emit();
@@ -1319,6 +1378,7 @@ function save() {
     day: sim.day,
     warrant: sim.warrant,
     servedCount: sim.servedCount,
+    quality: sim.quality,
   };
   try {
     localStorage.setItem("wanted-fuel-v2", JSON.stringify(data));
@@ -1341,6 +1401,7 @@ function load() {
       day: number;
       warrant: number;
       servedCount: number;
+      quality: Quality;
     }>;
     if (typeof s.money === "number") sim.money = s.money;
     if (typeof s.stars === "number") sim.stars = s.stars;
@@ -1350,6 +1411,7 @@ function load() {
     if (typeof s.day === "number") sim.day = s.day;
     if (typeof s.warrant === "number") sim.warrant = s.warrant;
     if (typeof s.servedCount === "number") sim.servedCount = s.servedCount;
+    if (s.quality === "fast" || s.quality === "high") sim.quality = s.quality;
   } catch {
     /* ignore */
   }
@@ -1362,6 +1424,7 @@ function buildSnap() {
   const c = sim.car;
   return {
     phase: sim.phase,
+    quality: sim.quality,
     money: sim.money,
     stars: sim.stars.toFixed(1),
     day: sim.day,
@@ -1369,7 +1432,6 @@ function buildSnap() {
     objective: sim.objective,
     prompt: sim.prompt,
     aimKind: sim.aimKind,
-    aimProgress: sim.aimProgress,
     cashAmt: sim.cashAmt,
     toast: sim.toastT > 0 ? sim.toast : "",
     hold: sim.hold,
@@ -1385,7 +1447,6 @@ function buildSnap() {
             name: c.name,
             job: c.job,
             grade: c.grade,
-            patience: Math.max(0, Math.min(1, c.patience / c.maxPatience)),
             asleep: c.asleep,
             caught: c.caught,
             served: c.served,
@@ -1454,7 +1515,14 @@ declare global {
 
 export function requestLock() {
   if (typeof document === "undefined" || isCoarse()) return;
-  if (!document.pointerLockElement) void document.body.requestPointerLock();
+  if (!document.pointerLockElement) {
+    try {
+      const p = document.body.requestPointerLock?.() as unknown as Promise<void> | undefined;
+      p?.catch?.(() => undefined);
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 export function onLockChange(locked: boolean) {
@@ -1462,6 +1530,7 @@ export function onLockChange(locked: boolean) {
 }
 
 export function bootAudioOnGesture() {
+  if (isAudioRunning()) return;
   unlockAudio();
   resumeAudio();
   setVolume(sim.volume);

@@ -40,6 +40,7 @@ let dragId: number | null = null;
 let lastX = 0;
 let lastY = 0;
 let dragDist = 0;
+let hasGamepad = false;
 
 function coarse() {
   return window.matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints > 0 && window.innerWidth < 900);
@@ -53,6 +54,7 @@ function dead(x: number, y: number, dz = 0.18) {
 }
 
 export function pollPad() {
+  if (!hasGamepad) return;
   const pads = navigator.getGamepads?.();
   const p = pads?.[0];
   if (!p) {
@@ -84,6 +86,9 @@ export function pollPad() {
 }
 
 export function bindInput() {
+  const onPadConnect = () => {
+    hasGamepad = true;
+  };
   const down = (e: KeyboardEvent) => {
     if (!e.repeat) input.taps.add(e.code);
     input.keys.add(e.code);
@@ -97,9 +102,12 @@ export function bindInput() {
     input.shootHeld = false;
     input.interactHeld = false;
     dragId = null;
+    lookId = null;
   };
   const move = (e: MouseEvent) => {
     if (document.pointerLockElement) {
+      // Filter out Chromium/Edge Windows DPI pointer-lock jump spikes
+      if (Math.abs(e.movementX) > 280 || Math.abs(e.movementY) > 280) return;
       input.lookX += e.movementX;
       input.lookY += e.movementY;
     }
@@ -167,20 +175,22 @@ export function bindInput() {
     if (e.pointerId === lookId) lookId = null;
   };
 
+  window.addEventListener("gamepadconnected", onPadConnect);
   window.addEventListener("keydown", down);
   window.addEventListener("keyup", up);
   window.addEventListener("blur", blur);
-  window.addEventListener("mousemove", move);
-  window.addEventListener("mousedown", mouseDown);
-  window.addEventListener("mouseup", mouseUp);
+  window.addEventListener("mousemove", move, { passive: true });
+  window.addEventListener("mousedown", mouseDown, { passive: true });
+  window.addEventListener("mouseup", mouseUp, { passive: true });
   window.addEventListener("contextmenu", ctxMenu);
   window.addEventListener("wheel", wheel, { passive: false });
   window.addEventListener("visibilitychange", vis);
-  window.addEventListener("pointerdown", pdown);
-  window.addEventListener("pointermove", pmove);
-  window.addEventListener("pointerup", pup);
-  window.addEventListener("pointercancel", pup);
+  window.addEventListener("pointerdown", pdown, { passive: true });
+  window.addEventListener("pointermove", pmove, { passive: true });
+  window.addEventListener("pointerup", pup, { passive: true });
+  window.addEventListener("pointercancel", pup, { passive: true });
   return () => {
+    window.removeEventListener("gamepadconnected", onPadConnect);
     window.removeEventListener("keydown", down);
     window.removeEventListener("keyup", up);
     window.removeEventListener("blur", blur);

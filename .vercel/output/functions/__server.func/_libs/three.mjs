@@ -161,5 +161,83 @@ function mergeAttributes(attributes) {
 	if (gpuType !== void 0) result.gpuType = gpuType;
 	return result;
 }
+/**
+* Returns a new geometry with vertices for which all similar vertex attributes (within tolerance) are merged.
+*
+* @param {BufferGeometry} geometry - The geometry to merge vertices for.
+* @param {number} [tolerance=1e-4] - The tolerance value.
+* @return {BufferGeometry} - The new geometry with merged vertices.
+*/
+function mergeVertices(geometry, tolerance = 1e-4) {
+	tolerance = Math.max(tolerance, Number.EPSILON);
+	const hashToIndex = {};
+	const indices = geometry.getIndex();
+	const positions = geometry.getAttribute("position");
+	const vertexCount = indices ? indices.count : positions.count;
+	let nextIndex = 0;
+	const attributeNames = Object.keys(geometry.attributes);
+	const sourceIndices = [];
+	const buffers = /* @__PURE__ */ new Map();
+	const newIndices = [];
+	const getters = [
+		"getX",
+		"getY",
+		"getZ",
+		"getW"
+	];
+	const halfTolerance = tolerance * .5;
+	const exponent = Math.log10(1 / tolerance);
+	const hashMultiplier = Math.pow(10, exponent);
+	const hashAdditive = halfTolerance * hashMultiplier;
+	for (let i = 0; i < vertexCount; i++) {
+		const index = indices ? indices.getX(i) : i;
+		let hash = "";
+		for (let j = 0, l = attributeNames.length; j < l; j++) {
+			const name = attributeNames[j];
+			const attribute = geometry.getAttribute(name);
+			const itemSize = attribute.itemSize;
+			for (let k = 0; k < itemSize; k++) hash += `${Math.trunc(attribute[getters[k]](index) * hashMultiplier + hashAdditive)},`;
+		}
+		if (hash in hashToIndex) newIndices.push(hashToIndex[hash]);
+		else {
+			sourceIndices.push(index);
+			hashToIndex[hash] = nextIndex;
+			newIndices.push(nextIndex);
+			nextIndex++;
+		}
+	}
+	const result = geometry.clone();
+	for (const name in geometry.attributes) result.setAttribute(name, remapAttribute(geometry.attributes[name], sourceIndices, buffers));
+	for (const name in geometry.morphAttributes) result.morphAttributes[name] = geometry.morphAttributes[name].map((attribute) => remapAttribute(attribute, sourceIndices, buffers));
+	result.setIndex(newIndices);
+	return result;
+}
+/**
+* Copies attribute entries in the order specified by the source vertex indices.
+* Preserves raw values, attribute type and metadata. Reuse the same buffer map
+* across calls to preserve shared interleaved buffers for the same mapping.
+*
+* @param {BufferAttribute|InterleavedBufferAttribute} attribute - The source attribute.
+* @param {Array<number>|TypedArray} sourceIndices - The source index for each output vertex.
+* @param {Map<InterleavedBuffer, InterleavedBuffer>} [buffers] - Shared interleaved buffer copies.
+* @return {BufferAttribute|InterleavedBufferAttribute} The remapped attribute.
+*/
+function remapAttribute(attribute, sourceIndices, buffers = /* @__PURE__ */ new Map()) {
+	const interleaved = attribute.isInterleavedBufferAttribute;
+	const source = interleaved ? attribute.data : attribute;
+	const stride = interleaved ? source.stride : attribute.itemSize;
+	let data = interleaved ? buffers.get(source) : void 0;
+	if (data === void 0) {
+		const array = new source.array.constructor(sourceIndices.length * stride);
+		for (let i = 0; i < sourceIndices.length; i++) for (let j = 0; j < stride; j++) array[i * stride + j] = source.array[sourceIndices[i] * stride + j];
+		data = interleaved ? new source.constructor(array, stride, source.meshPerAttribute) : new attribute.constructor(array, attribute.itemSize, attribute.normalized, attribute.meshPerAttribute);
+		data.setUsage(source.usage);
+		if (interleaved) buffers.set(source, data);
+	}
+	const result = interleaved ? new attribute.constructor(data, attribute.itemSize, attribute.offset, attribute.normalized) : data;
+	result.name = attribute.name;
+	if (!interleaved) result.gpuType = attribute.gpuType;
+	return result;
+}
 //#endregion
-export { mergeGeometries as t };
+export { mergeVertices as n, mergeGeometries as t };

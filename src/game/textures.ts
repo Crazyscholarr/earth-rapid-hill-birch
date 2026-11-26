@@ -11,7 +11,7 @@ export function paint(draw: (ctx: CanvasRenderingContext2D, w: number, h: number
   draw(ctx, w, h);
   const tex = new CanvasTexture(canvas);
   if (srgb) tex.colorSpace = SRGBColorSpace;
-  tex.anisotropy = 2;
+  tex.anisotropy = 1;
   return { canvas, ctx, tex, key: "" };
 }
 
@@ -24,19 +24,18 @@ export function createAoShadowTexture() {
     g.addColorStop(1, "rgba(10, 12, 16, 0)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
-  }, 256, 256).tex;
+  }, 128, 128).tex;
 }
 
 export function createSandTexture() {
   const p = paint((ctx, w, h) => {
     ctx.fillStyle = "#b58d5e";
     ctx.fillRect(0, 0, w, h);
-    // Natural desert soil mottling
-    for (let i = 0; i < 48; i++) {
+    for (let i = 0; i < 32; i++) {
       const gx = Math.random() * w;
       const gy = Math.random() * h;
-      const gr = 30 + Math.random() * 80;
-      const g = ctx.createRadialGradient(gx, gy, 4, gx, gy, gr);
+      const gr = 16 + Math.random() * 42;
+      const g = ctx.createRadialGradient(gx, gy, 2, gx, gy, gr);
       g.addColorStop(0, i % 2 === 0 ? "rgba(138,96,54,0.22)" : "rgba(214,180,134,0.18)");
       g.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = g;
@@ -44,29 +43,22 @@ export function createSandTexture() {
       ctx.arc(gx, gy, gr, 0, Math.PI * 2);
       ctx.fill();
     }
-    // Wind-blown sand ripples
-    for (let y = 0; y < h; y += 16) {
-      ctx.strokeStyle = y % 32 === 0 ? "rgba(120,82,45,0.16)" : "rgba(232,202,158,0.14)";
-      ctx.lineWidth = 3;
+    for (let y = 0; y < h; y += 8) {
+      ctx.strokeStyle = y % 16 === 0 ? "rgba(120,82,45,0.16)" : "rgba(232,202,158,0.14)";
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(0, y);
-      for (let x = 0; x <= w; x += 32) {
-        ctx.quadraticCurveTo(x + 16, y + Math.sin(x * 0.05 + y) * 3, x + 32, y);
+      for (let x = 0; x <= w; x += 16) {
+        ctx.quadraticCurveTo(x + 8, y + Math.sin(x * 0.1 + y) * 1.6, x + 16, y);
       }
       ctx.stroke();
     }
-    // Fine desert gravel & stones
-    for (let i = 0; i < 6000; i++) {
-      const x = Math.random() * w;
-      const y = Math.random() * h;
-      const r = 0.5 + Math.random() * 2.1;
+    for (let i = 0; i < 1800; i++) {
       ctx.fillStyle =
         i % 4 === 0 ? "rgba(78,54,32,0.34)" : i % 3 === 0 ? "rgba(142,102,62,0.28)" : "rgba(236,212,175,0.22)";
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillRect(Math.random() * w, Math.random() * h, 1.8, 1.8);
     }
-  }, 512, 512);
+  }, 256, 256);
   p.tex.wrapS = RepeatWrapping;
   p.tex.wrapT = RepeatWrapping;
   p.tex.repeat.set(18, 18);
@@ -84,27 +76,25 @@ export function createCanyonRockTexture() {
     g.addColorStop(1, "#7a4429");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
-    // Geological sedimentary rock strata lines
-    for (let y = 8; y < h; y += 10) {
-      ctx.strokeStyle = y % 20 === 0 ? "rgba(58,30,16,0.28)" : "rgba(235,180,135,0.16)";
-      ctx.lineWidth = 2 + (y % 3);
+    for (let y = 4; y < h; y += 6) {
+      ctx.strokeStyle = y % 12 === 0 ? "rgba(58,30,16,0.28)" : "rgba(235,180,135,0.16)";
+      ctx.lineWidth = 1.5 + (y % 2);
       ctx.beginPath();
       ctx.moveTo(0, y);
-      for (let x = 0; x <= w; x += 32) {
-        ctx.lineTo(x, y + Math.sin(x * 0.04 + y * 0.2) * 3);
+      for (let x = 0; x <= w; x += 16) {
+        ctx.lineTo(x, y + Math.sin(x * 0.08 + y * 0.3) * 1.8);
       }
       ctx.stroke();
     }
-    // Vertical erosion fissures
     ctx.strokeStyle = "rgba(45,22,12,0.22)";
-    ctx.lineWidth = 2;
-    for (let x = 16; x < w; x += 28) {
+    ctx.lineWidth = 1.5;
+    for (let x = 8; x < w; x += 16) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
-      ctx.lineTo(x + (Math.random() - 0.5) * 14, h);
+      ctx.lineTo(x + (Math.random() - 0.5) * 8, h);
       ctx.stroke();
     }
-  }, 512, 512);
+  }, 256, 256);
   p.tex.wrapS = RepeatWrapping;
   p.tex.wrapT = RepeatWrapping;
   p.tex.repeat.set(2, 1);
@@ -116,19 +106,11 @@ export function createSurfaceBumpTexture() {
     (ctx, w, h) => {
       ctx.fillStyle = "#808080";
       ctx.fillRect(0, 0, w, h);
-      for (let i = 0; i < 7500; i++) {
-        const v = 85 + Math.floor(Math.random() * 85);
-        ctx.fillStyle = `rgb(${v},${v},${v})`;
-        ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
-      }
     },
-    256,
-    256,
+    64,
+    64,
     false,
   );
-  p.tex.wrapS = RepeatWrapping;
-  p.tex.wrapT = RepeatWrapping;
-  p.tex.repeat.set(8, 8);
   return p.tex;
 }
 
@@ -136,14 +118,14 @@ export function createConcreteTexture() {
   const p = paint((ctx, w, h) => {
     ctx.fillStyle = "#aba498";
     ctx.fillRect(0, 0, w, h);
-    for (let i = 0; i < 4500; i++) {
+    for (let i = 0; i < 1400; i++) {
       ctx.fillStyle = i % 2 === 0 ? "rgba(60,56,50,0.12)" : "rgba(240,236,228,0.1)";
-      ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+      ctx.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5);
     }
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 6; i++) {
       const gx = Math.random() * w;
       const gy = Math.random() * h;
-      const gr = 28 + Math.random() * 52;
+      const gr = 16 + Math.random() * 28;
       const g = ctx.createRadialGradient(gx, gy, 2, gx, gy, gr);
       g.addColorStop(0, "rgba(52,48,42,0.22)");
       g.addColorStop(1, "rgba(52,48,42,0)");
@@ -153,20 +135,20 @@ export function createConcreteTexture() {
       ctx.fill();
     }
     ctx.strokeStyle = "rgba(58,52,46,0.45)";
-    ctx.lineWidth = 3;
-    for (let x = 0; x <= w; x += 128) {
+    ctx.lineWidth = 2;
+    for (let x = 0; x <= w; x += 64) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, h);
       ctx.stroke();
     }
-    for (let y = 0; y <= h; y += 128) {
+    for (let y = 0; y <= h; y += 64) {
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(w, y);
       ctx.stroke();
     }
-  }, 512, 512);
+  }, 256, 256);
   p.tex.wrapS = RepeatWrapping;
   p.tex.wrapT = RepeatWrapping;
   p.tex.repeat.set(4, 2);
@@ -177,30 +159,28 @@ export function createAsphaltTexture() {
   const p = paint((ctx, w, h) => {
     ctx.fillStyle = "#23262d";
     ctx.fillRect(0, 0, w, h);
-    for (let i = 0; i < 8000; i++) {
+    for (let i = 0; i < 2200; i++) {
       ctx.fillStyle = i % 3 === 0 ? "rgba(200,206,218,0.065)" : "rgba(10,12,15,0.32)";
-      ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+      ctx.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5);
     }
-    // Worn tire tracks
     ctx.fillStyle = "rgba(12,13,16,0.34)";
     ctx.fillRect(0, h * 0.22, w, h * 0.16);
     ctx.fillRect(0, h * 0.62, w, h * 0.16);
-    // Tar sealed cracks
     ctx.strokeStyle = "rgba(10,11,14,0.5)";
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 7; i++) {
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 5; i++) {
       ctx.beginPath();
       let cx = Math.random() * w;
       let cy = Math.random() * h;
       ctx.moveTo(cx, cy);
-      for (let s = 0; s < 6; s++) {
-        cx += 18 + Math.random() * 28;
-        cy += (Math.random() - 0.5) * 20;
+      for (let s = 0; s < 5; s++) {
+        cx += 12 + Math.random() * 16;
+        cy += (Math.random() - 0.5) * 12;
         ctx.lineTo(cx, cy);
       }
       ctx.stroke();
     }
-  }, 512, 512);
+  }, 256, 256);
   p.tex.wrapS = RepeatWrapping;
   p.tex.wrapT = RepeatWrapping;
   p.tex.repeat.set(14, 1);
@@ -643,10 +623,10 @@ export function createBrickTexture() {
       for (let c = -1; c <= cols; c++) {
         const shade = 165 + Math.floor(Math.random() * 32);
         ctx.fillStyle = `rgb(${shade}, ${shade - 22}, ${shade - 40})`;
-        ctx.fillRect(c * bw + off + 3, r * bh + 3, bw - 6, bh - 6);
+        ctx.fillRect(c * bw + off + 2, r * bh + 2, bw - 4, bh - 4);
       }
     }
-  }, 512, 512);
+  }, 256, 256);
   p.tex.wrapS = RepeatWrapping;
   p.tex.wrapT = RepeatWrapping;
   p.tex.repeat.set(4, 1);
@@ -858,6 +838,21 @@ export function createMudTexture() {
   }, 256, 200).tex;
 }
 
+export function createOpenSignTexture() {
+  return paint((ctx, w, h) => {
+    ctx.fillStyle = "#090d16";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(4, 4, w - 8, h - 8);
+    ctx.fillStyle = "#fb7185";
+    ctx.font = "900 34px Impact, Arial Black, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("OPEN 24H", w / 2, h / 2 + 2);
+  }, 192, 64).tex;
+}
+
 export function createConsoleLabelTexture(label: string, bg: string, fg = "#f8fafc") {
   return paint((ctx, w, h) => {
     ctx.fillStyle = bg;
@@ -871,13 +866,17 @@ export function createConsoleLabelTexture(label: string, bg: string, fg = "#f8fa
 }
 
 export function drawMonitor(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  ctx.save();
+  ctx.scale(w / 640, h / 400);
+  const vw = 640;
+  const vh = 400;
   ctx.fillStyle = "#0b1120";
-  ctx.fillRect(0, 0, w, h);
+  ctx.fillRect(0, 0, vw, vh);
   ctx.fillStyle = "#162033";
-  ctx.fillRect(16, 16, w - 32, 196);
+  ctx.fillRect(16, 16, vw - 32, 196);
   ctx.strokeStyle = "#334155";
   ctx.lineWidth = 2;
-  ctx.strokeRect(16, 16, w - 32, 196);
+  ctx.strokeRect(16, 16, vw - 32, 196);
   ctx.fillStyle = "#f59e0b";
   ctx.font = "800 30px Arial, sans-serif";
   ctx.textAlign = "left";
@@ -890,18 +889,19 @@ export function drawMonitor(ctx: CanvasRenderingContext2D, w: number, h: number)
   ctx.fillText(`$${sim.money}`, 32, 182);
 
   ctx.fillStyle = "#131c2e";
-  ctx.fillRect(16, 226, w - 32, h - 242);
-  ctx.strokeRect(16, 226, w - 32, h - 242);
+  ctx.fillRect(16, 226, vw - 32, vh - 242);
+  ctx.strokeRect(16, 226, vw - 32, vh - 242);
   ctx.fillStyle = "#f8fafc";
   ctx.font = "700 26px Arial, sans-serif";
   ctx.fillText(sim.customer ? `Khách: ${sim.customer}` : "Làn xe đang trống", 32, 266);
   ctx.fillStyle = "#94a3b8";
   ctx.font = "600 21px Arial, sans-serif";
   const tip = TIPS[sim.tipI] ?? "";
-  wrap(ctx, tip, 32, 304, w - 64, 27);
+  wrap(ctx, tip, 32, 304, vw - 64, 27);
   ctx.fillStyle = "#fbbf24";
   ctx.font = "600 21px Arial, sans-serif";
   ctx.fillText(`"${sim.review}"`, 32, 368);
+  ctx.restore();
 }
 
 export function drawDriverFace(
@@ -910,22 +910,17 @@ export function drawDriverFace(
   h: number,
   opts: { skin: string; face: string | null; mad: boolean; asleep: boolean; caught: boolean; devil: boolean },
 ) {
-  ctx.fillStyle = opts.skin;
-  ctx.fillRect(0, 0, w, h);
+  // Transparent background so facial features blend seamlessly onto the 3D sculpted head mesh with zero edge seam!
+  ctx.clearRect(0, 0, w, h);
 
-  // Subtle cheekbone warmth & jawline contour shading
-  for (const cx of [w * 0.24, w * 0.76]) {
-    const cg = ctx.createRadialGradient(cx, h * 0.58, 2, cx, h * 0.58, w * 0.18);
-    cg.addColorStop(0, opts.devil ? "rgba(127,29,29,0.35)" : "rgba(194,106,82,0.24)");
+  // Subtle cheekbone warmth
+  for (const cx of [w * 0.26, w * 0.74]) {
+    const cg = ctx.createRadialGradient(cx, h * 0.58, 2, cx, h * 0.58, w * 0.16);
+    cg.addColorStop(0, opts.devil ? "rgba(127,29,29,0.35)" : "rgba(194,106,82,0.26)");
     cg.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = cg;
     ctx.fillRect(0, 0, w, h);
   }
-  const jawG = ctx.createLinearGradient(0, h * 0.76, 0, h);
-  jawG.addColorStop(0, "rgba(0,0,0,0)");
-  jawG.addColorStop(1, "rgba(40,20,12,0.22)");
-  ctx.fillStyle = jawG;
-  ctx.fillRect(0, h * 0.76, w, h * 0.24);
 
   const lx = w * 0.33;
   const rx = w * 0.67;
@@ -1043,16 +1038,29 @@ export function drawDriverFace(
   }
 }
 
+let sharedPosterArt: ReturnType<typeof paint> | null = null;
+
+export function getSharedPosterArt() {
+  if (!sharedPosterArt) {
+    sharedPosterArt = paint((ctx, w, h) => drawPoster(ctx, w, h), 320, 425);
+  }
+  return sharedPosterArt;
+}
+
 export function drawPoster(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  ctx.save();
+  ctx.scale(w / 512, h / 680);
+  const vw = 512;
+  const vh = 680;
   const face = WARRANTS[sim.warrant % WARRANTS.length]!;
   ctx.fillStyle = "#efe6d1";
-  ctx.fillRect(0, 0, w, h);
+  ctx.fillRect(0, 0, vw, vh);
   ctx.strokeStyle = "#a89674";
   ctx.lineWidth = 6;
-  ctx.strokeRect(16, 16, w - 32, h - 32);
+  ctx.strokeRect(16, 16, vw - 32, vh - 32);
 
   ctx.fillStyle = "#e5dbc4";
-  ctx.fillRect(46, 136, w - 92, 290);
+  ctx.fillRect(46, 136, vw - 92, 290);
   ctx.strokeStyle = "#a89878";
   ctx.lineWidth = 2;
   ctx.font = "700 18px monospace";
@@ -1062,7 +1070,7 @@ export function drawPoster(ctx: CanvasRenderingContext2D, w: number, h: number) 
     const yy = 165 + i * 44;
     ctx.beginPath();
     ctx.moveTo(56, yy);
-    ctx.lineTo(w - 56, yy);
+    ctx.lineTo(vw - 56, yy);
     ctx.stroke();
     ctx.fillStyle = "#78716c";
     ctx.fillText(marks[i]!, 58, yy - 5);
@@ -1071,59 +1079,56 @@ export function drawPoster(ctx: CanvasRenderingContext2D, w: number, h: number) 
   ctx.fillStyle = "#991b1b";
   ctx.font = "900 72px Impact, Arial Black, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("WANTED", w / 2, 102);
+  ctx.fillText("WANTED", vw / 2, 102);
 
-  // Broad Anatomical Shoulders + Collared Jacket + Inner Tee
   ctx.fillStyle = face.shirt;
   ctx.beginPath();
-  ctx.moveTo(w / 2 - 118, 426);
-  ctx.quadraticCurveTo(w / 2 - 112, 338, w / 2 - 36, 328);
-  ctx.lineTo(w / 2 + 36, 328);
-  ctx.quadraticCurveTo(w / 2 + 112, 338, w / 2 + 118, 426);
+  ctx.moveTo(vw / 2 - 118, 426);
+  ctx.quadraticCurveTo(vw / 2 - 112, 338, vw / 2 - 36, 328);
+  ctx.lineTo(vw / 2 + 36, 328);
+  ctx.quadraticCurveTo(vw / 2 + 112, 338, vw / 2 + 118, 426);
   ctx.closePath();
   ctx.fill();
   ctx.fillStyle = "#f1f5f9";
   ctx.beginPath();
-  ctx.moveTo(w / 2 - 24, 330);
-  ctx.lineTo(w / 2 + 24, 330);
-  ctx.lineTo(w / 2, 368);
+  ctx.moveTo(vw / 2 - 24, 330);
+  ctx.lineTo(vw / 2 + 24, 330);
+  ctx.lineTo(vw / 2, 368);
   ctx.closePath();
   ctx.fill();
 
-  // Shaded Neck & Sculpted Jawline Head
   ctx.fillStyle = "#d19373";
-  ctx.fillRect(w / 2 - 22, 298, 44, 38);
+  ctx.fillRect(vw / 2 - 22, 298, 44, 38);
   ctx.fillStyle = "#d99e7e";
   ctx.beginPath();
-  ctx.ellipse(w / 2 - 58, 248, 10, 18, -0.1, 0, Math.PI * 2);
-  ctx.ellipse(w / 2 + 58, 248, 10, 18, 0.1, 0, Math.PI * 2);
+  ctx.ellipse(vw / 2 - 58, 248, 10, 18, -0.1, 0, Math.PI * 2);
+  ctx.ellipse(vw / 2 + 58, 248, 10, 18, 0.1, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = "#e8b393";
   ctx.beginPath();
-  ctx.moveTo(w / 2 - 56, 224);
-  ctx.quadraticCurveTo(w / 2 - 58, 178, w / 2, 178);
-  ctx.quadraticCurveTo(w / 2 + 58, 178, w / 2 + 56, 224);
-  ctx.quadraticCurveTo(w / 2 + 54, 278, w / 2 + 28, 304);
-  ctx.quadraticCurveTo(w / 2, 318, w / 2 - 28, 304);
-  ctx.quadraticCurveTo(w / 2 - 54, 278, w / 2 - 56, 224);
+  ctx.moveTo(vw / 2 - 56, 224);
+  ctx.quadraticCurveTo(vw / 2 - 58, 178, vw / 2, 178);
+  ctx.quadraticCurveTo(vw / 2 + 58, 178, vw / 2 + 56, 224);
+  ctx.quadraticCurveTo(vw / 2 + 54, 278, vw / 2 + 28, 304);
+  ctx.quadraticCurveTo(vw / 2, 318, vw / 2 - 28, 304);
+  ctx.quadraticCurveTo(vw / 2 - 54, 278, vw / 2 - 56, 224);
   ctx.closePath();
   ctx.fill();
 
   if (!face.hat) {
     ctx.fillStyle = "#221e1d";
     ctx.beginPath();
-    ctx.moveTo(w / 2 - 58, 232);
-    ctx.quadraticCurveTo(w / 2 - 62, 168, w / 2, 168);
-    ctx.quadraticCurveTo(w / 2 + 62, 168, w / 2 + 58, 232);
-    ctx.quadraticCurveTo(w / 2 + 48, 198, w / 2, 196);
-    ctx.quadraticCurveTo(w / 2 - 48, 198, w / 2 - 58, 232);
+    ctx.moveTo(vw / 2 - 58, 232);
+    ctx.quadraticCurveTo(vw / 2 - 62, 168, vw / 2, 168);
+    ctx.quadraticCurveTo(vw / 2 + 62, 168, vw / 2 + 58, 232);
+    ctx.quadraticCurveTo(vw / 2 + 48, 198, vw / 2, 196);
+    ctx.quadraticCurveTo(vw / 2 - 48, 198, vw / 2 - 58, 232);
     ctx.fill();
   }
 
-  // Almond Eyes with Irises & Catchlights
   const er = face.id === "thief" ? 13.5 : 10.5;
-  for (const ex of [w / 2 - 22, w / 2 + 22]) {
+  for (const ex of [vw / 2 - 22, vw / 2 + 22]) {
     ctx.fillStyle = "#fff";
     ctx.beginPath();
     ctx.ellipse(ex, 240, er, er * 0.76, 0, 0, Math.PI * 2);
@@ -1147,31 +1152,30 @@ export function drawPoster(ctx: CanvasRenderingContext2D, w: number, h: number) 
   ctx.lineCap = "round";
   ctx.beginPath();
   if (face.id === "bully") {
-    ctx.moveTo(w / 2 - 38, 218);
-    ctx.lineTo(w / 2 - 10, 228);
-    ctx.moveTo(w / 2 + 38, 218);
-    ctx.lineTo(w / 2 + 10, 228);
+    ctx.moveTo(vw / 2 - 38, 218);
+    ctx.lineTo(vw / 2 - 10, 228);
+    ctx.moveTo(vw / 2 + 38, 218);
+    ctx.lineTo(vw / 2 + 10, 228);
   } else {
-    ctx.moveTo(w / 2 - 36, 223);
-    ctx.lineTo(w / 2 - 10, 222);
-    ctx.moveTo(w / 2 + 36, 223);
-    ctx.lineTo(w / 2 + 10, 222);
+    ctx.moveTo(vw / 2 - 36, 223);
+    ctx.lineTo(vw / 2 - 10, 222);
+    ctx.moveTo(vw / 2 + 36, 223);
+    ctx.lineTo(vw / 2 + 10, 222);
   }
   ctx.stroke();
 
-  // Shaded Nose Bridge
   ctx.fillStyle = "rgba(166, 102, 72, 0.38)";
   ctx.beginPath();
-  ctx.moveTo(w / 2, 238);
-  ctx.lineTo(w / 2 - 9, 268);
-  ctx.lineTo(w / 2 + 6, 270);
+  ctx.moveTo(vw / 2, 238);
+  ctx.lineTo(vw / 2 - 9, 268);
+  ctx.lineTo(vw / 2 + 6, 270);
   ctx.closePath();
   ctx.fill();
 
   if (face.id === "worst") {
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.roundRect(w / 2 - 26, 280, 52, 16, 5);
+    ctx.roundRect(vw / 2 - 26, 280, 52, 16, 5);
     ctx.fill();
     ctx.strokeStyle = "#18181b";
     ctx.lineWidth = 2.5;
@@ -1180,37 +1184,38 @@ export function drawPoster(ctx: CanvasRenderingContext2D, w: number, h: number) 
     ctx.strokeStyle = "#6e3420";
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(w / 2 - 16, 289);
-    ctx.quadraticCurveTo(w / 2, 292, w / 2 + 16, 289);
+    ctx.moveTo(vw / 2 - 16, 289);
+    ctx.quadraticCurveTo(vw / 2, 292, vw / 2 + 16, 289);
     ctx.stroke();
   }
 
   if (face.hat) {
     ctx.fillStyle = face.hat;
     ctx.beginPath();
-    ctx.arc(w / 2, 206, 58, Math.PI, 0);
+    ctx.arc(vw / 2, 206, 58, Math.PI, 0);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(w / 2 + 4, 205, 68, 10, 0, 0, Math.PI * 2);
+    ctx.ellipse(vw / 2 + 4, 205, 68, 10, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
   ctx.fillStyle = "#18181b";
-  ctx.fillRect(w / 2 - 90, 384, 180, 40);
+  ctx.fillRect(vw / 2 - 90, 384, 180, 40);
   ctx.fillStyle = "#f8fafc";
   ctx.font = "700 20px monospace";
-  ctx.fillText(`ID: ${face.id.toUpperCase()}`, w / 2, 411);
+  ctx.fillText(`ID: ${face.id.toUpperCase()}`, vw / 2, 411);
 
   ctx.fillStyle = "#1c1917";
   ctx.font = "800 34px Arial, sans-serif";
-  ctx.fillText(face.name, w / 2, 492);
+  ctx.fillText(face.name, vw / 2, 492);
   ctx.fillStyle = "#991b1b";
   ctx.font = "800 40px Arial, sans-serif";
-  ctx.fillText(`THƯỞNG $${face.bounty}`, w / 2, 548);
+  ctx.fillText(`THƯỞNG $${face.bounty}`, vw / 2, 548);
   ctx.fillStyle = "#44403c";
   ctx.font = "600 22px Arial, sans-serif";
-  wrap(ctx, face.line, 36, 598, w - 72, 28);
+  wrap(ctx, face.line, 36, 598, vw - 72, 28);
   ctx.textAlign = "left";
+  ctx.restore();
 }
 
 export function drawBubble(ctx: CanvasRenderingContext2D, c: Car) {

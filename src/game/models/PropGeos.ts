@@ -11,7 +11,7 @@ import {
   Vector3,
   type BufferGeometry,
 } from "three";
-import { mergeParts, placeGeo } from "@/game/geo";
+import { colorGeo, mergeColoredParts, mergeParts, placeGeo } from "@/game/geo";
 
 // Singleton lazily-built sculpted prop geometries shared between Station shelves & First-Person Hands
 // (Zero duplicate VRAM buffers, 2-3 draw calls per complex prop instead of 8-12!)
@@ -92,33 +92,24 @@ function createAllPropGeos() {
     placeGeo(new TorusGeometry(0.028, 0.005, 6, 12), [0, 0.044, -0.128]),
   ]);
 
-  // 3. Gourmet Diner Cheeseburger + Crispy Fries Combo
-  const burgerBasketGeo = mergeParts([
-    placeGeo(new CylinderGeometry(0.145, 0.115, 0.036, 14), [0, -0.024, 0], [0, 0, 0], [1.15, 1, 0.95]),
-  ]);
+  // 3. Gourmet Diner Cheeseburger + Crispy Fries Combo (Merged into 2 draw calls instead of 6!)
   const burgerBunAndFriesGeo = mergeParts([
-    // Bottom toasted bun + domed sesame brioche crown
-    placeGeo(new CylinderGeometry(0.095, 0.088, 0.024, 14), [-0.015, -0.002, 0.005]),
-    placeGeo(new SphereGeometry(0.098, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.54), [-0.015, 0.058, 0.005]),
-    // Golden French fries tucked neatly on side of basket!
+    placeGeo(new CylinderGeometry(0.095, 0.088, 0.024, 12), [-0.015, -0.002, 0.005]),
+    placeGeo(new SphereGeometry(0.098, 12, 7, 0, Math.PI * 2, 0, Math.PI * 0.54), [-0.015, 0.058, 0.005]),
     placeGeo(new BoxGeometry(0.014, 0.065, 0.014), [0.095, 0.018, -0.025], [0.2, 0.1, -0.45]),
     placeGeo(new BoxGeometry(0.014, 0.072, 0.014), [0.102, 0.022, -0.005], [0.05, 0, -0.52]),
     placeGeo(new BoxGeometry(0.014, 0.068, 0.014), [0.098, 0.02, 0.016], [-0.15, -0.1, -0.48]),
     placeGeo(new BoxGeometry(0.014, 0.06, 0.014), [0.086, 0.016, 0.032], [-0.25, 0.15, -0.4]),
   ]);
-  const burgerPattyGeo = placeGeo(new CylinderGeometry(0.102, 0.102, 0.028, 14), [-0.015, 0.02, 0.005]);
-  const burgerCheeseGeo = mergeParts([
-    placeGeo(new BoxGeometry(0.158, 0.007, 0.158), [-0.015, 0.036, 0.005], [0, 0.45, 0]),
-    placeGeo(new BoxGeometry(0.152, 0.006, 0.152), [-0.015, 0.038, 0.005], [0, 1.15, 0]),
-  ]);
-  const burgerLettuceGeo = mergeParts([
-    // Wavy ruffled lettuce leaf edge
-    placeGeo(new CylinderGeometry(0.108, 0.104, 0.012, 12), [-0.015, 0.046, 0.005]),
-    placeGeo(new TorusGeometry(0.096, 0.009, 5, 12), [-0.015, 0.046, 0.005], [Math.PI / 2, 0, 0]),
-  ]);
-  const burgerTomatoGeo = mergeParts([
-    placeGeo(new CylinderGeometry(0.052, 0.052, 0.01, 10), [-0.042, 0.053, 0.028]),
-    placeGeo(new CylinderGeometry(0.052, 0.052, 0.01, 10), [0.018, 0.053, -0.022]),
+  const burgerSolidGeo = mergeColoredParts([
+    colorGeo(new CylinderGeometry(0.145, 0.115, 0.036, 12), "#dc2626", [0, -0.024, 0], [0, 0, 0], [1.15, 1, 0.95]),
+    colorGeo(new CylinderGeometry(0.102, 0.102, 0.028, 12), "#5c2810", [-0.015, 0.02, 0.005]),
+    colorGeo(new BoxGeometry(0.158, 0.007, 0.158), "#f59e0b", [-0.015, 0.036, 0.005], [0, 0.45, 0]),
+    colorGeo(new BoxGeometry(0.152, 0.006, 0.152), "#f59e0b", [-0.015, 0.038, 0.005], [0, 1.15, 0]),
+    colorGeo(new CylinderGeometry(0.108, 0.104, 0.012, 10), "#65a30d", [-0.015, 0.046, 0.005]),
+    colorGeo(new TorusGeometry(0.096, 0.009, 4, 10), "#65a30d", [-0.015, 0.046, 0.005], [Math.PI / 2, 0, 0]),
+    colorGeo(new CylinderGeometry(0.052, 0.052, 0.01, 8), "#dc2626", [-0.042, 0.053, 0.028]),
+    colorGeo(new CylinderGeometry(0.052, 0.052, 0.01, 8), "#dc2626", [0.018, 0.053, -0.022]),
   ]);
 
   // 4. Figure-8 Bone-Shaped Car Wash Sponge
@@ -199,12 +190,8 @@ function createAllPropGeos() {
     nozzleMetalGeo,
     nozzleBootGeo,
     nozzleSplashGeo,
-    burgerBasketGeo,
+    burgerSolidGeo,
     burgerBunAndFriesGeo,
-    burgerPattyGeo,
-    burgerCheeseGeo,
-    burgerLettuceGeo,
-    burgerTomatoGeo,
     spongeYellowGeo,
     spongeGreenGeo,
     capDarkGeo,

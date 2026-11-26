@@ -1,6 +1,7 @@
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let sfxBus: GainNode | null = null;
+let noiseBuf: AudioBuffer | null = null;
 let volume = 0.7;
 
 function ensure() {
@@ -12,6 +13,18 @@ function ensure() {
   master.gain.value = volume * volume;
   sfxBus.connect(master);
   master.connect(ctx.destination);
+
+  // Pre-bake one shared 0.32s white-noise buffer once so pumping/washing never allocates buffers mid-frame!
+  const len = Math.max(1, Math.floor(ctx.sampleRate * 0.32));
+  noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = noiseBuf.getChannelData(0);
+  for (let i = 0; i < len; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+}
+
+export function isAudioRunning() {
+  return Boolean(ctx && ctx.state === "running");
 }
 
 export function unlockAudio() {
@@ -50,22 +63,21 @@ function tone(freq: number, dur: number, type: OscillatorType, vol: number, slid
 }
 
 function noise(dur: number, vol: number, freq = 800) {
-  if (!ctx || !sfxBus) return;
-  const n = Math.max(1, Math.floor(ctx.sampleRate * dur));
-  const buf = ctx.createBuffer(1, n, ctx.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  if (!ctx || !sfxBus || !noiseBuf) return;
+  const t = ctx.currentTime;
+  const playDur = Math.min(dur, noiseBuf.duration - 0.01);
   const src = ctx.createBufferSource();
-  src.buffer = buf;
+  src.buffer = noiseBuf;
   const filter = ctx.createBiquadFilter();
   filter.type = "lowpass";
   filter.frequency.value = freq;
   const g = ctx.createGain();
-  g.gain.value = vol;
+  g.gain.setValueAtTime(Math.max(0.0002, vol), t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + playDur);
   src.connect(filter);
   filter.connect(g);
   g.connect(sfxBus);
-  src.start();
+  src.start(t, 0, playDur + 0.01);
   src.onended = () => {
     src.disconnect();
     filter.disconnect();
